@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SDC Profiling — Presentation</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+        :root {
+            --bg: #0a0e1a;
+            --surface: #121829;
+            --surface2: #1a2236;
+            --accent: #38bdf8;
+            --accent2: #818cf8;
+            --accent-glow: rgba(56,189,248,0.15);
+            --green: #34d399;
+            --yellow: #fbbf24;
+            --red: #f87171;
+            --orange: #fb923c;
+            --text: #f1f5f9;
+            --text2: #94a3b8;
+            --text3: #64748b;
+            --purple: #a78bfa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        /* ─────── Slide Container ─────── */
+        .deck {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 60px 90px;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(60px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(0);
+        }
+
+        .slide.exit-left {
+            opacity: 0;
+            transform: translateX(-60px);
+        }
+
+        /* ─────── Typography ─────── */
+        .slide-number {
+            position: absolute;
+            top: 28px;
+            left: 90px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text3);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .brand {
+            position: absolute;
+            top: 28px;
+            right: 90px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+        }
+
+        h1 .accent { color: var(--accent); }
+        h1 .accent2 { color: var(--accent2); }
+
+        h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1.2rem;
+            letter-spacing: -0.5px;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: var(--text2);
+            line-height: 1.6;
+            max-width: 700px;
+        }
+
+        .big-stat {
+            font-size: 4rem;
+            font-weight: 900;
+            color: var(--accent);
+            line-height: 1;
+        }
+        .big-stat.green { color: var(--green); }
+        .big-stat.purple { color: var(--accent2); }
+        .big-stat.yellow { color: var(--yellow); }
+
+        .stat-label {
+            font-size: 0.95rem;
+            color: var(--text2);
+            margin-top: 6px;
+        }
+
+        /* ─────── Layout helpers ─────── */
+        .row { display: flex; gap: 2rem; align-items: flex-start; }
+        .col { flex: 1; }
+        .center { text-align: center; align-items: center; }
+        .gap-lg { gap: 3rem; }
+        .mt-1 { margin-top: 1rem; }
+        .mt-2 { margin-top: 2rem; }
+        .mt-3 { margin-top: 3rem; }
+        .mb-1 { margin-bottom: 1rem; }
+
+        /* ─────── Cards ─────── */
+        .card {
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .card-accent { border-left: 3px solid var(--accent); }
+        .card-green { border-left: 3px solid var(--green); }
+        .card-red { border-left: 3px solid var(--red); }
+        .card-purple { border-left: 3px solid var(--accent2); }
+        .card-yellow { border-left: 3px solid var(--yellow); }
+
+        .card h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .card p, .card li {
+            font-size: 0.88rem;
+            color: var(--text2);
+            line-height: 1.6;
+        }
+        .card ul { padding-left: 1.1rem; }
+        .card li { margin-bottom: 0.3rem; }
+
+        /* ─────── Stat Grid ─────── */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+        }
+        .stat-box {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        /* ─────── Flow Diagram ─────── */
+        .flow {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .flow-node {
+            background: var(--surface2);
+            border: 1px solid var(--accent);
+            border-radius: 10px;
+            padding: 14px 20px;
+            text-align: center;
+            min-width: 130px;
+            font-size: 0.85rem;
+        }
+        .flow-node strong {
+            display: block;
+            color: var(--accent);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+        }
+        .flow-arrow {
+            font-size: 1.4rem;
+            color: var(--accent);
+            margin: 0 6px;
+            flex-shrink: 0;
+        }
+
+        /* ─────── Table ─────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        th {
+            text-align: left;
+            padding: 10px 14px;
+            color: var(--accent);
+            font-weight: 600;
+            border-bottom: 2px solid rgba(56,189,248,0.3);
+            background: rgba(56,189,248,0.05);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        td {
+            padding: 9px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            color: var(--text2);
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        code {
+            background: #000;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            color: var(--purple);
+            font-size: 0.82rem;
+        }
+
+        pre {
+            background: #000;
+            border: 1px solid #222;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            color: var(--text);
+        }
+        pre .cm { color: #6a9955; }
+        pre .kw { color: #569cd6; }
+        pre .str { color: #ce9178; }
+        pre .fn { color: #dcdcaa; }
+        pre .num { color: #b5cea8; }
+
+        /* ─────── Bullet list ─────── */
+        .bullets { list-style: none; padding: 0; }
+        .bullets li {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 0.9rem;
+            font-size: 1.05rem;
+            color: var(--text2);
+            line-height: 1.5;
+        }
+        .bullets li::before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .bullets li strong { color: var(--text); }
+
+        /* ─────── Badge ─────── */
+        .badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-blue { background: var(--accent-glow); color: var(--accent); }
+        .badge-green { background: rgba(52,211,153,0.15); color: var(--green); }
+        .badge-yellow { background: rgba(251,191,36,0.15); color: var(--yellow); }
+        .badge-red { background: rgba(248,113,113,0.15); color: var(--red); }
+        .badge-purple { background: rgba(129,140,248,0.15); color: var(--accent2); }
+
+        /* ─────── Comparison columns ─────── */
+        .vs-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1.5rem;
+            align-items: stretch;
+        }
+        .vs-divider {
+            display: flex;
+            align-items: center;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text3);
+        }
+
+        /* ─────── Timeline ─────── */
+        .timeline {
+            display: flex;
+            gap: 0;
+            align-items: flex-start;
+        }
+        .tl-item {
+            flex: 1;
+            position: relative;
+            padding: 0 12px;
+            text-align: center;
+        }
+        .tl-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            margin: 0 auto 10px auto;
+        }
+        .tl-line {
+            position: absolute;
+            top: 7px;
+            left: calc(50% + 7px);
+            right: calc(-50% + 7px);
+            height: 2px;
+            background: var(--accent);
+            opacity: 0.4;
+        }
+        .tl-item:last-child .tl-line { display: none; }
+        .tl-week {
+            font-size: 0.7rem;
+            color: var(--accent);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .tl-title {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text);
+            margin: 4px 0;
+        }
+        .tl-desc {
+            font-size: 0.72rem;
+            color: var(--text3);
+            line-height: 1.4;
+        }
+
+        /* ─────── Navigation ─────── */
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 56px;
+            background: rgba(10,14,26,0.92);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 40px;
+            z-index: 100;
+        }
+
+        .nav-bar button {
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: var(--text);
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-bar button:hover {
+            background: var(--surface2);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .nav-bar button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .progress-track {
+            flex: 1;
+            max-width: 400px;
+            height: 3px;
+            background: var(--surface2);
+            border-radius: 3px;
+            margin: 0 24px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 0.4s ease;
+        }
+
+        .slide-counter {
+            font-size: 0.8rem;
+            color: var(--text3);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* ─────── Decorative ─────── */
+        .glow-circle {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.08;
+            pointer-events: none;
+        }
+
+        .divider {
+            width: 60px;
+            height: 3px;
+            background: var(--accent);
+            border-radius: 3px;
+            margin: 1.2rem 0;
+        }
+
+        /* ─────── Risk table colors ─────── */
+        td .badge { font-size: 0.68rem; }
+
+        /* ─────── Responsive ─────── */
+        @media (max-width: 1024px) {
+            .slide { padding: 40px 40px 80px 40px; }
+            h1 { font-size: 2.5rem; }
+            h2 { font-size: 1.7rem; }
+            .stat-grid { grid-template-columns: repeat(2, 1fr); }
+            .vs-grid { grid-template-columns: 1fr; }
+            .vs-divider { display: none; }
+            .row { flex-direction: column; }
+            .timeline { flex-wrap: wrap; }
+        }
+
+        @media print {
+            .slide { position: relative; opacity: 1; transform: none; pointer-events: auto; page-break-after: always; height: auto; min-height: 100vh; }
+            .nav-bar { display: none; }
+            .deck { height: auto; overflow: visible; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+    <!-- ============================= SLIDE 1: TITLE ============================= -->
+    <div class="slide active" data-slide="0">
+        <div class="glow-circle" style="width:600px;height:600px;background:var(--accent);top:-200px;right:-100px;"></div>
+        <div class="glow-circle" style="width:400px;height:400px;background:var(--accent2);bottom:-100px;left:-50px;"></div>
+
+        <div style="margin-bottom:1rem;">
+            <span class="badge badge-blue">Innovation Days 2026</span>&nbsp;
+            <span class="badge badge-purple">DFX Team</span>
+        </div>
+
+        <h1 style="font-size:4rem;">
+            <span class="accent">AI SDC</span> Profiling
+        </h1>
+        <h1 style="font-size:2.5rem; font-weight:400; color:var(--text2); margin-top:0.2rem;">
+            Predictive Debug Architecture for <span class="accent2">AFHC/ANC</span>
+        </h1>
+
+        <div class="divider" style="margin:1.5rem 0;"></div>
+
+        <p class="subtitle">
+            Leveraging thousands of historical failure logs in Snowflake to predict which AFHC/ANC commands will fail a new CPU — before running a single test.
+        </p>
+
+        <div class="stat-grid mt-3" style="max-width:700px;">
+            <div class="stat-box">
+                <div class="big-stat">1000s</div>
+                <div class="stat-label">Historical Logs</div>
+            </div>
+            <div class="stat-box">
+                <div class="big-stat green">~70%</div>
+                <div class="stat-label">Debug Time Saved</div>
+            </div>
+            <div class="stat-box">
+                <div class="big-stat purple">Top-5</div>
+                <div class="stat-label">Accuracy Target</div>
+            </div>
+            <div class="stat-box">
+                <div class="big-stat yellow">&lt;500ms</div>
+                <div class="stat-label">Prediction Latency</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 2: PROBLEM ============================= -->
+    <div class="slide" data-slide="1">
+        <span class="slide-number">Problem Statement</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>Why This Matters</h2>
+        <p class="subtitle mb-1">When a failing CPU hits the bench, engineers guess which commands to run.</p>
+
+        <div class="vs-grid mt-2">
+            <div class="card card-red">
+                <h4 style="color:var(--red);">🔴 Today — Reactive Debug</h4>
+                <ul class="bullets" style="margin-top:0.8rem;">
+                    <li>Engineer manually interprets vague symptoms</li>
+                    <li>Runs <strong>broad sweep</strong> of AFHC/ANC commands</li>
+                    <li>Most commands pass — <strong>wasted hours</strong></li>
+                    <li>Knowledge trapped in individual heads</li>
+                    <li>Turnaround: <strong>hours to days</strong> per unit</li>
+                </ul>
+            </div>
+            <div class="vs-divider">→</div>
+            <div class="card card-green">
+                <h4 style="color:var(--green);">🟢 Proposed — Predictive Debug</h4>
+                <ul class="bullets" style="margin-top:0.8rem;">
+                    <li>Input symptoms → model cross-references <strong>1000s of cases</strong></li>
+                    <li>Returns <strong>ranked commands</strong> by failure probability</li>
+                    <li>Hits failure on <strong>first or second</strong> attempt</li>
+                    <li>Institutional knowledge codified &amp; amplified</li>
+                    <li>Turnaround: <strong>minutes</strong> per unit</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 3: CORE QUESTION ============================= -->
+    <div class="slide" data-slide="2">
+        <span class="slide-number">The Core Question</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>What Are We Solving?</h2>
+        <div class="divider"></div>
+
+        <div class="card card-accent mt-2" style="max-width:850px; padding:2rem;">
+            <p style="font-size:1.15rem; color:var(--text); line-height:1.7;">
+                <em>"Given a new CPU presenting symptoms <strong style="color:var(--accent);">S</strong> = {MCE code, bank ID, error type, thermal state, voltage, boot stage, stepping, SKU, …},
+                which AFHC/ANC commands <strong style="color:var(--accent);">C₁, C₂, …, Cₖ</strong> have the highest probability of 
+                <strong style="color:var(--green);">reproducing the failure?</strong>"</em>
+            </p>
+        </div>
+
+        <div class="mt-3">
+            <h3>This is a Learning-to-Rank Problem</h3>
+            <ul class="bullets" style="max-width:700px;">
+                <li>Train a model to <strong>score every candidate command</strong> against the symptom vector</li>
+                <li>Sort by <strong>predicted failure probability</strong> — present top-K to engineer</li>
+                <li>Failure patterns <strong>repeat</strong>: Bank 10 MCE under thermal stress in 2026 ≈ same fault class seen in 2024</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 4: DATA ============================= -->
+    <div class="slide" data-slide="3">
+        <span class="slide-number">Data Landscape</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>What We Have in Snowflake</h2>
+        <p class="subtitle mb-1">Each record = <strong>(CPU, Symptom, Command, Outcome)</strong> — the raw material for supervised learning.</p>
+
+        <div class="row mt-2" style="gap:1.5rem;">
+            <div class="col" style="flex:1.5;">
+                <table>
+                    <thead>
+                        <tr><th>Field</th><th>Role</th><th>Description</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>mce_code</code></td><td>Feature</td><td>Machine Check Exception hex code</td></tr>
+                        <tr><td><code>mce_bank</code></td><td>Feature</td><td>MCA bank (LS, IF, CU, EX, FP, UMC…)</td></tr>
+                        <tr><td><code>error_type</code></td><td>Feature</td><td>Correctable / Uncorrectable / Fatal</td></tr>
+                        <tr><td><code>thermal_state</code></td><td>Feature</td><td>Ambient → Extreme</td></tr>
+                        <tr><td><code>voltage_state</code></td><td>Feature</td><td>Core voltage at failure</td></tr>
+                        <tr><td><code>boot_stage</code></td><td>Feature</td><td>POST / OS Boot / Stress</td></tr>
+                        <tr><td><code>command</code></td><td><strong style="color:var(--accent);">Label</strong></td><td>AFHC/ANC command executed</td></tr>
+                        <tr><td><code>result</code></td><td><strong style="color:var(--green);">Signal</strong></td><td>PASS or FAIL</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col">
+                <div class="card card-yellow" style="margin-bottom:1rem;">
+                    <h4 style="color:var(--yellow);">Volume</h4>
+                    <p>1000s CPUs × 50-200 cmds each = <strong>50K–200K+ training rows</strong></p>
+                </div>
+                <div class="card card-red" style="margin-bottom:1rem;">
+                    <h4 style="color:var(--red);">Class Imbalance</h4>
+                    <p>Most commands PASS — failures are minority. Need SMOTE / class-weighted loss.</p>
+                </div>
+                <div class="card card-accent">
+                    <h4>Missing Data</h4>
+                    <p>Incomplete fields handled via imputation or "unknown" categories.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 5: ARCHITECTURE ============================= -->
+    <div class="slide" data-slide="4">
+        <span class="slide-number">System Architecture</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>End-to-End Pipeline</h2>
+        <div class="divider"></div>
+
+        <div class="flow mt-2">
+            <div class="flow-node"><strong>Snowflake</strong>Historical Logs</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>ETL</strong>Extract &amp; Clean</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>Features</strong>Symptom Vectors</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>Training</strong>LightGBM + FAISS</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>Registry</strong>Versioned Models</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>MCP Server</strong>Inference API</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>AFHC/ANC</strong>Debug Workflow</div>
+        </div>
+
+        <div class="flow mt-2" style="opacity:0.7;">
+            <div class="flow-node" style="border-color:var(--green);">
+                <strong style="color:var(--green);">Feedback Loop</strong>Results → Snowflake → Retrain
+            </div>
+            <span style="color:var(--green); font-size:1.4rem; margin-left:12px;">⟲</span>
+            <span style="color:var(--text3); font-size:0.85rem; margin-left:12px;">Self-improving cycle: every prediction tested feeds new labeled data back</span>
+        </div>
+
+        <div class="row mt-3" style="gap:1.5rem;">
+            <div class="card card-accent" style="flex:1;">
+                <h4>Data Pipeline</h4>
+                <p>Snowflake connector → MCE normalization → Command canonicalization → Quality filters → Feature store</p>
+            </div>
+            <div class="card card-purple" style="flex:1;">
+                <h4>ML Pipeline</h4>
+                <p>GroupKFold CV → LightGBM training → Optuna HPO → FAISS index build → SHAP explanations</p>
+            </div>
+            <div class="card card-green" style="flex:1;">
+                <h4>Serving Pipeline</h4>
+                <p>FastMCP server → FastAPI REST endpoint → AFHC/ANC CLI hook → Feedback writer</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 6: FEATURE ENGINEERING ============================= -->
+    <div class="slide" data-slide="5">
+        <span class="slide-number">Feature Engineering</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>Encoding Hardware Symptoms</h2>
+        <p class="subtitle mb-1">Multi-modal encoding: structured hardware context → unified numerical vector (~200-500 dims)</p>
+
+        <div class="row mt-2" style="gap:1.5rem;">
+            <div class="col">
+                <table>
+                    <thead><tr><th>Category</th><th>Encoding</th><th>Dims</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>MCE Family</strong></td><td>One-hot top-50 families</td><td>~51</td></tr>
+                        <tr><td><strong>MCA Bank</strong></td><td>One-hot (LS, IF, CU, EX, FP, UMC…)</td><td>~20</td></tr>
+                        <tr><td><strong>Error Severity</strong></td><td>Ordinal (1-4)</td><td>1</td></tr>
+                        <tr><td><strong>Thermal + V/F</strong></td><td>Ordinal + z-score + ratio</td><td>5</td></tr>
+                        <tr><td><strong>Silicon ID</strong></td><td>Target encoding (stepping, SKU)</td><td>2</td></tr>
+                        <tr><td><strong>Core Topology</strong></td><td>Count, CCD dist, locality</td><td>4</td></tr>
+                        <tr><td><strong>Command ID</strong></td><td>Target-encoded + param hash</td><td>~10</td></tr>
+                        <tr><td><strong>Symptom Text</strong></td><td>TF-IDF or MiniLM embedding</td><td>100-384</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col">
+                <h3>Key Interaction Features</h3>
+                <div class="card card-accent" style="margin-bottom:0.8rem;">
+                    <h4>Bank × Error Type</h4>
+                    <p>Uncorrectable on Bank 10 (UMC) ≠ Uncorrectable on Bank 5 (EX)</p>
+                </div>
+                <div class="card card-purple" style="margin-bottom:0.8rem;">
+                    <h4>Thermal × Boot Stage</h4>
+                    <p>Failure at POST + extreme heat ≠ failure during stress at ambient</p>
+                </div>
+                <div class="card card-yellow" style="margin-bottom:0.8rem;">
+                    <h4>V/F Margin Index</h4>
+                    <p>(V - Vmin) / (Vmax - Vmin) — captures margin-edge sensitivity</p>
+                </div>
+                <div class="card card-green">
+                    <h4>Historical Hit Rate</h4>
+                    <p>Per-command failure rate given this bank type — strong prior signal</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 7: MODEL ============================= -->
+    <div class="slide" data-slide="6">
+        <span class="slide-number">Predictive Model</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>Two-Stage Ranking Architecture</h2>
+        <div class="divider"></div>
+
+        <div class="flow mt-2" style="margin-bottom:2rem;">
+            <div class="flow-node" style="min-width:180px; border-color:var(--yellow);">
+                <strong style="color:var(--yellow);">Stage 1: Retrieval</strong>
+                FAISS nearest-neighbor<br>→ Top-50 candidate commands
+            </div>
+            <div class="flow-arrow" style="font-size:2rem;">→</div>
+            <div class="flow-node" style="min-width:180px; border-color:var(--green);">
+                <strong style="color:var(--green);">Stage 2: Ranking</strong>
+                LightGBM scores each<br>candidate → Top-5
+            </div>
+        </div>
+
+        <div class="row" style="gap:1.5rem;">
+            <div class="col">
+                <h3>Model Options Evaluated</h3>
+                <table>
+                    <thead><tr><th>Approach</th><th>Fit</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>LightGBM</strong> — Gradient Boosting</td><td><span class="badge badge-green">★★★ Primary</span></td></tr>
+                        <tr><td><strong>FAISS</strong> — Nearest Neighbor</td><td><span class="badge badge-blue">★★ Retrieval</span></td></tr>
+                        <tr><td><strong>Neural Ranker</strong> — Two-tower</td><td><span class="badge badge-yellow">★★ Future</span></td></tr>
+                        <tr><td><strong>Multi-label</strong> — Classifier chains</td><td><span class="badge badge-purple">★ Alt</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="col">
+                <h3>Why LightGBM?</h3>
+                <ul class="bullets">
+                    <li><strong>Best-in-class</strong> for tabular / mixed-type data</li>
+                    <li>Handles <strong>missing values</strong> natively</li>
+                    <li>Fast training + built-in <strong>feature importance</strong></li>
+                    <li>Class-weighted loss handles <strong>imbalanced</strong> PASS/FAIL</li>
+                    <li><strong>Optuna</strong> auto-tunes hyperparameters</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 8: TRAINING & EVALUATION ============================= -->
+    <div class="slide" data-slide="7">
+        <span class="slide-number">Training &amp; Evaluation</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>How We Train &amp; Measure</h2>
+        <div class="divider"></div>
+
+        <div class="row mt-2" style="gap:2rem;">
+            <div class="col">
+                <h3>Data Splitting</h3>
+                <p style="color:var(--text2); font-size:0.9rem; margin-bottom:1rem;">Grouped temporal split — no CPU spans both train &amp; test.</p>
+                <div class="card card-accent" style="margin-bottom:0.8rem;">
+                    <h4>Train (70%)</h4>
+                    <p>CPUs debugged before cutoff T</p>
+                </div>
+                <div class="card card-purple" style="margin-bottom:0.8rem;">
+                    <h4>Validation (15%)</h4>
+                    <p>CPUs between T and T+Δ — HPO + early stopping</p>
+                </div>
+                <div class="card card-green">
+                    <h4>Test (15%)</h4>
+                    <p>CPUs after T+Δ — held-out, never touched during training</p>
+                </div>
+            </div>
+            <div class="col">
+                <h3>Key Metrics &amp; Targets</h3>
+                <table>
+                    <thead><tr><th>Metric</th><th>Target</th><th>Why It Matters</th></tr></thead>
+                    <tbody>
+                        <tr><td><strong>Hit@5</strong></td><td style="color:var(--green); font-weight:700;">≥ 85%</td><td>At least 1 failing cmd in top-5</td></tr>
+                        <tr><td><strong>NDCG@10</strong></td><td style="color:var(--green); font-weight:700;">≥ 0.70</td><td>Ranking quality</td></tr>
+                        <tr><td><strong>AUC-ROC</strong></td><td style="color:var(--green); font-weight:700;">≥ 0.90</td><td>Overall discrimination</td></tr>
+                        <tr><td><strong>Precision@5</strong></td><td style="color:var(--green); font-weight:700;">≥ 50%</td><td>Reduce wasted test runs</td></tr>
+                        <tr><td><strong>MRR</strong></td><td style="color:var(--green); font-weight:700;">≥ 0.65</td><td>Speed to first failure</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 9: INFERENCE ============================= -->
+    <div class="slide" data-slide="8">
+        <span class="slide-number">Inference</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>How Prediction Works (< 500ms)</h2>
+        <div class="divider"></div>
+
+        <div class="flow mt-2" style="margin-bottom:2rem;">
+            <div class="flow-node"><strong>①</strong>Symptom Intake</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>②</strong>Feature Encoding</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node" style="border-color:var(--yellow);"><strong style="color:var(--yellow);">③</strong>FAISS Retrieval<br><span style="font-size:0.75rem;color:var(--text3);">50 similar CPUs</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node" style="border-color:var(--green);"><strong style="color:var(--green);">④</strong>LightGBM Scoring<br><span style="font-size:0.75rem;color:var(--text3);">P(FAIL) per cmd</span></div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node" style="border-color:var(--accent2);"><strong style="color:var(--accent2);">⑤</strong>Ranked Top-K<br><span style="font-size:0.75rem;color:var(--text3);">+ SHAP reasons</span></div>
+        </div>
+
+        <div class="row" style="gap:1.5rem;">
+            <div class="col" style="flex:1.2;">
+                <h3>Example Output</h3>
+                <pre style="font-size:0.8rem; line-height:1.7;">
+<span class="cm">Symptoms: Bank 10 | MCE: 0xBEEF0010 | uncorrectable | hot | stress</span>
+
+<span style="color:var(--green);">[SUCCESS] 5 High-Probability Commands:</span>
+
+#1  <span style="color:var(--green);">94.2%</span>  stream -t mem_band_max -v 1.2     (23 similar)
+#2  <span style="color:var(--green);">87.5%</span>  mprime -t L3_stress_umc           (18 similar)
+#3  <span style="color:var(--yellow);">72.1%</span>  membw -p read_write -s 4G         (14 similar)
+#4  <span style="color:var(--yellow);">62.1%</span>  linpack -c all_cores -fpu_only    (11 similar)
+#5  <span style="color:var(--text3);">33.2%</span>  y-cruncher -t swp_stress          ( 6 similar)
+                </pre>
+            </div>
+            <div class="col">
+                <h3>SHAP Explanation</h3>
+                <pre style="font-size:0.8rem; line-height:1.7;">
+<span class="cm">Why "stream -t mem_band_max" → P=0.942?</span>
+
+Base rate:               0.12
+<span style="color:var(--green);">+ mce_bank=10 (UMC):</span>    +0.38
+<span style="color:var(--green);">+ thermal=hot:</span>           +0.21
+<span style="color:var(--yellow);">+ error=uncorrectable:</span>   +0.14
+<span style="color:var(--text3);">+ vf_margin=0.15:</span>        +0.09
+─────────────────────────────
+Final:                   <span style="color:var(--green);">0.942</span>
+                </pre>
+                <p style="color:var(--text3); font-size:0.82rem; margin-top:0.5rem;">Every prediction comes with per-feature contribution breakdown for engineer trust.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 10: INTEGRATION ============================= -->
+    <div class="slide" data-slide="9">
+        <span class="slide-number">Integration</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>AFHC/ANC Framework Integration</h2>
+        <p class="subtitle">Three integration surfaces — meet engineers where they already work.</p>
+        <div class="divider"></div>
+
+        <div class="row mt-2" style="gap:1.5rem;">
+            <div class="card card-accent" style="flex:1;">
+                <h4>🔌 MCP Server <span class="badge badge-green">Primary</span></h4>
+                <p style="margin-bottom:0.8rem;">Model Context Protocol — works with VS Code + Copilot, CLI agents, Jupyter.</p>
+                <pre style="font-size:0.75rem;">
+<span class="cm"># MCP Tools Exposed:</span>
+<span class="fn">predict_commands</span>(symptoms)
+<span class="fn">get_similar_cases</span>(symptoms, k)
+<span class="fn">explain_prediction</span>(symptoms, cmd)
+<span class="fn">submit_feedback</span>(cpu_id, cmd, result)
+                </pre>
+            </div>
+            <div class="card card-purple" style="flex:1;">
+                <h4>🌐 REST API <span class="badge badge-blue">Secondary</span></h4>
+                <p style="margin-bottom:0.8rem;">FastAPI endpoint for scripts, dashboards, and internal tooling.</p>
+                <pre style="font-size:0.75rem;">
+POST /api/v1/predict
+{
+  <span class="str">"mce_bank"</span>: <span class="num">10</span>,
+  <span class="str">"error_type"</span>: <span class="str">"uncorrectable"</span>,
+  <span class="str">"thermal"</span>: <span class="str">"hot"</span>,
+  <span class="str">"top_k"</span>: <span class="num">5</span>
+}
+                </pre>
+            </div>
+            <div class="card card-yellow" style="flex:1;">
+                <h4>⌨️ CLI Hook <span class="badge badge-yellow">Tertiary</span></h4>
+                <p style="margin-bottom:0.8rem;">Pre-run hook in existing AFHC/ANC scripts.</p>
+                <pre style="font-size:0.75rem;">
+$ afhc-predict --bank 10 --thermal hot
+
+#1  94.2%  stream -t mem_band_max
+#2  87.5%  mprime -t L3_stress_umc
+#3  72.1%  membw -p read_write
+
+$ afhc-run --priority-list "stream,mprime"
+                </pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 11: FEEDBACK LOOP ============================= -->
+    <div class="slide" data-slide="10">
+        <span class="slide-number">Continuous Learning</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>Self-Improving Feedback Loop</h2>
+        <p class="subtitle">Every prediction tested generates new labeled data → model gets smarter over time.</p>
+        <div class="divider"></div>
+
+        <div class="flow mt-2" style="margin-bottom:2rem;">
+            <div class="flow-node"><strong>New CPU</strong>Symptoms</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>Predict</strong>Top-K cmds</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>Engineer</strong>Runs on bench</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node"><strong>Log Results</strong>→ Snowflake</div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-node" style="border-color:var(--green);"><strong style="color:var(--green);">Retrain</strong>Weekly / on-trigger</div>
+            <div class="flow-arrow" style="color:var(--green);">⟲</div>
+        </div>
+
+        <div class="row" style="gap:1.5rem;">
+            <div class="card card-accent" style="flex:1;">
+                <h4>📅 Scheduled Retraining</h4>
+                <p>Weekly: retrain on latest snapshot. Auto-promote if metrics improve vs. current production model.</p>
+            </div>
+            <div class="card card-red" style="flex:1;">
+                <h4>📊 Drift Detection</h4>
+                <p>Monitor confidence distribution. If Hit@5 degrades on recent predictions → trigger immediate retraining.</p>
+            </div>
+            <div class="card card-purple" style="flex:1;">
+                <h4>🆕 New Stepping</h4>
+                <p>Zero training data for new silicon? Transfer learning from closest known stepping + rapid fine-tune.</p>
+            </div>
+            <div class="card card-green" style="flex:1;">
+                <h4>🔄 Model Versioning</h4>
+                <p>Every model versioned with data hash + metrics. Automatic rollback if new model regresses.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 12: ROADMAP ============================= -->
+    <div class="slide" data-slide="11">
+        <span class="slide-number">Roadmap</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>Implementation Timeline</h2>
+        <div class="divider"></div>
+
+        <div class="timeline mt-3">
+            <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-line"></div>
+                <div class="tl-week">Weeks 1-2</div>
+                <div class="tl-title">Data Discovery</div>
+                <div class="tl-desc">Audit Snowflake tables, validate schema, EDA notebook, confirm FAIL label volume</div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-line"></div>
+                <div class="tl-week">Weeks 3-4</div>
+                <div class="tl-title">ETL Pipeline</div>
+                <div class="tl-desc">Build extraction queries, feature encoding, reproducible snapshots</div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-line"></div>
+                <div class="tl-week">Weeks 5-6</div>
+                <div class="tl-title">Baseline Model</div>
+                <div class="tl-desc">LightGBM + FAISS, establish baseline metrics, temporal test set</div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-line"></div>
+                <div class="tl-week">Weeks 7-8</div>
+                <div class="tl-title">Optimization</div>
+                <div class="tl-desc">Interaction features, text embeddings, Optuna HPO, SHAP</div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-line"></div>
+                <div class="tl-week">Weeks 9-10</div>
+                <div class="tl-title">Integration</div>
+                <div class="tl-desc">MCP server, FastAPI, CLI hook, feedback loop writer</div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-line"></div>
+                <div class="tl-week">Weeks 11-12</div>
+                <div class="tl-title">Pilot</div>
+                <div class="tl-desc">2-3 engineers, real CPUs, measure time-to-first-fail improvement</div>
+            </div>
+            <div class="tl-item">
+                <div class="tl-dot"></div>
+                <div class="tl-week">Week 13+</div>
+                <div class="tl-title">Production</div>
+                <div class="tl-desc">Weekly retraining, drift monitoring, expand to all teams</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 13: RISKS ============================= -->
+    <div class="slide" data-slide="12">
+        <span class="slide-number">Risk Mitigation</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>Risks &amp; Mitigations</h2>
+        <div class="divider"></div>
+
+        <table class="mt-2">
+            <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td><strong>Insufficient FAIL labels</strong><br><span style="color:var(--text3);font-size:0.78rem;">Most commands pass → sparse signal</span></td>
+                    <td><span class="badge badge-red">High</span></td>
+                    <td>Class-weighted loss, SMOTE, focal loss. Collect "near-miss" anomalies.</td>
+                </tr>
+                <tr>
+                    <td><strong>Novel failure mode</strong><br><span style="color:var(--text3);font-size:0.78rem;">No historical precedent</span></td>
+                    <td><span class="badge badge-yellow">Medium</span></td>
+                    <td>Fall back to FAISS retrieval (Stage 1). Flag low-confidence for manual review.</td>
+                </tr>
+                <tr>
+                    <td><strong>Data quality issues</strong><br><span style="color:var(--text3);font-size:0.78rem;">Inconsistent logging, missing fields</span></td>
+                    <td><span class="badge badge-yellow">Medium</span></td>
+                    <td>Phase 0 data audit. LightGBM handles missing data natively. Robust cleaning pipeline.</td>
+                </tr>
+                <tr>
+                    <td><strong>Concept drift</strong><br><span style="color:var(--text3);font-size:0.78rem;">New steppings have different patterns</span></td>
+                    <td><span class="badge badge-yellow">Medium</span></td>
+                    <td>Weekly retraining, drift detection, stepping-aware features + transfer learning.</td>
+                </tr>
+                <tr>
+                    <td><strong>Engineer distrust</strong><br><span style="color:var(--text3);font-size:0.78rem;">"Black box" resistance</span></td>
+                    <td><span class="badge badge-red">High</span></td>
+                    <td>SHAP explanations per prediction. Show similar historical cases. "Recommend" not "direct."</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ============================= SLIDE 14: TECH STACK ============================= -->
+    <div class="slide" data-slide="13">
+        <span class="slide-number">Technology</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h2>Tech Stack</h2>
+        <div class="divider"></div>
+
+        <div class="row mt-2" style="gap:1.5rem;">
+            <div class="card card-accent" style="flex:1;">
+                <h4 style="font-size:1.1rem;">📦 Data Layer</h4>
+                <ul class="bullets" style="margin-top:1rem;">
+                    <li><strong>Snowflake</strong> — Primary warehouse</li>
+                    <li><strong>snowflake-connector-python</strong></li>
+                    <li><strong>Pandas / Polars</strong> — Data wrangling</li>
+                    <li><strong>Great Expectations</strong> — Validation</li>
+                </ul>
+            </div>
+            <div class="card card-purple" style="flex:1;">
+                <h4 style="font-size:1.1rem;">🧠 ML Layer</h4>
+                <ul class="bullets" style="margin-top:1rem;">
+                    <li><strong>LightGBM</strong> — Primary ranker</li>
+                    <li><strong>FAISS</strong> — Vector retrieval</li>
+                    <li><strong>Optuna</strong> — HPO</li>
+                    <li><strong>SHAP</strong> — Explainability</li>
+                    <li><strong>scikit-learn</strong> — Encoding &amp; metrics</li>
+                </ul>
+            </div>
+            <div class="card card-green" style="flex:1;">
+                <h4 style="font-size:1.1rem;">🚀 Serving Layer</h4>
+                <ul class="bullets" style="margin-top:1rem;">
+                    <li><strong>FastMCP</strong> — MCP server</li>
+                    <li><strong>FastAPI</strong> — REST endpoint</li>
+                    <li><strong>Docker</strong> — Containers</li>
+                    <li><strong>MLflow</strong> — Model registry</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card mt-3" style="text-align:center; padding:2rem; border:1px dashed var(--accent);">
+            <h3 style="margin-bottom:0.5rem;">Core Prediction Formula</h3>
+            <p style="font-size:1.4rem; font-weight:600; color:var(--accent); letter-spacing:0.5px;">
+                P( result = FAIL &nbsp;|&nbsp; symptoms = <em>s</em>, command = <em>c</em> )
+            </p>
+            <p style="color:var(--text3); font-size:0.88rem; margin-top:0.5rem;">
+                Score every candidate command against the symptom vector → rank by descending probability → present top-K
+            </p>
+        </div>
+    </div>
+
+    <!-- ============================= SLIDE 15: CLOSING ============================= -->
+    <div class="slide" data-slide="14">
+        <div class="glow-circle" style="width:500px;height:500px;background:var(--accent);bottom:-200px;right:-100px;"></div>
+        <div class="glow-circle" style="width:350px;height:350px;background:var(--accent2);top:-100px;left:-50px;"></div>
+
+        <span class="slide-number">Summary</span>
+        <span class="brand">AI SDC Profiling</span>
+
+        <h1 style="font-size:3rem;">
+            From <span style="color:var(--red);">Reactive</span> to <span class="accent">Predictive</span>
+        </h1>
+        <div class="divider" style="margin:1rem 0 2rem 0;"></div>
+
+        <div class="row" style="gap:3rem; max-width:900px;">
+            <div>
+                <ul class="bullets" style="font-size:1.1rem;">
+                    <li><strong>1000s of historical failures</strong> become a predictive asset</li>
+                    <li><strong>Top-5 command ranking</strong> in under 500ms</li>
+                    <li><strong>SHAP explanations</strong> build engineer trust</li>
+                    <li><strong>Self-improving</strong> via continuous feedback loop</li>
+                    <li>Integrates directly into <strong>AFHC/ANC workflow</strong></li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="stat-grid mt-3" style="max-width:600px;">
+            <div class="stat-box">
+                <div class="big-stat" style="color:var(--red); text-decoration:line-through; font-size:2.5rem;">Hours</div>
+                <div class="stat-label">Before</div>
+            </div>
+            <div class="stat-box">
+                <div class="big-stat green" style="font-size:2.5rem;">Minutes</div>
+                <div class="stat-label">After</div>
+            </div>
+            <div class="stat-box">
+                <div class="big-stat purple" style="font-size:2.5rem;">85%+</div>
+                <div class="stat-label">Hit@5 Target</div>
+            </div>
+            <div class="stat-box">
+                <div class="big-stat yellow" style="font-size:2.5rem;">13 Weeks</div>
+                <div class="stat-label">To Production</div>
+            </div>
+        </div>
+
+        <p style="color:var(--text3); font-size:1rem; margin-top:3rem;">
+            ⚡ <strong style="color:var(--text);">AI SDC Profiling</strong> &nbsp;—&nbsp; DFX Innovation Days 2026
+        </p>
+    </div>
+
+</div>
+
+<!-- ─────── Navigation Bar ─────── -->
+<nav class="nav-bar">
+    <button id="prevBtn" onclick="navigate(-1)" disabled>← Previous</button>
+    <div style="display:flex; align-items:center; gap:12px; flex:1; justify-content:center;">
+        <span class="slide-counter" id="counter">1 / 15</span>
+        <div class="progress-track">
+            <div class="progress-fill" id="progress" style="width:6.67%;"></div>
+        </div>
+    </div>
+    <button id="nextBtn" onclick="navigate(1)">Next →</button>
+</nav>
+
+<script>
+    const slides = document.querySelectorAll('.slide');
+    const total = slides.length;
+    let current = 0;
+
+    function showSlide(index) {
+        slides.forEach((s, i) => {
+            s.classList.remove('active', 'exit-left');
+            if (i < index) s.classList.add('exit-left');
+        });
+        slides[index].classList.add('active');
+
+        document.getElementById('counter').textContent = `${index + 1} / ${total}`;
+        document.getElementById('progress').style.width = `${((index + 1) / total) * 100}%`;
+        document.getElementById('prevBtn').disabled = (index === 0);
+        document.getElementById('nextBtn').disabled = (index === total - 1);
+    }
+
+    function navigate(dir) {
+        const next = current + dir;
+        if (next >= 0 && next < total) {
+            current = next;
+            showSlide(current);
+        }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+            e.preventDefault();
+            navigate(1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+            e.preventDefault();
+            navigate(-1);
+        } else if (e.key === 'Home') {
+            e.preventDefault();
+            current = 0;
+            showSlide(current);
+        } else if (e.key === 'End') {
+            e.preventDefault();
+            current = total - 1;
+            showSlide(current);
+        }
+    });
+
+    // Touch / swipe support
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; });
+    document.addEventListener('touchend', (e) => {
+        const diff = touchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) navigate(diff > 0 ? 1 : -1);
+    });
+</script>
+
+</body>
+</html>

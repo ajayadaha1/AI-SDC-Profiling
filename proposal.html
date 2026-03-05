@@ -1,0 +1,1740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI SDC Profiling | Predictive Debug Architecture for AFHC/ANC</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --panel-bg: #1e293b;
+            --panel-bg-alt: #162032;
+            --accent: #38bdf8;
+            --accent-hover: #0284c7;
+            --accent-dim: rgba(56, 189, 248, 0.15);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --purple: #a78bfa;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 2rem 3rem;
+            line-height: 1.7;
+        }
+
+        header {
+            border-bottom: 2px solid var(--panel-bg);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        h1 {
+            color: var(--accent);
+            margin: 0;
+            font-size: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h2 {
+            color: var(--text-main);
+            border-left: 4px solid var(--accent);
+            padding-left: 12px;
+            margin-top: 3rem;
+            font-size: 1.5rem;
+        }
+
+        h3 { color: var(--accent); margin-top: 0; }
+        h4 { color: var(--accent); margin-bottom: 0.5rem; }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-blue { background: var(--accent-dim); color: var(--accent); }
+        .badge-green { background: rgba(16,185,129,0.15); color: var(--success); }
+        .badge-yellow { background: rgba(245,158,11,0.15); color: var(--warning); }
+        .badge-red { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background-color: var(--panel-bg);
+            padding: 1.5rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .card-highlight {
+            border-left: 3px solid var(--accent);
+        }
+
+        .card-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--accent);
+            color: var(--bg-dark);
+            border-radius: 50%;
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-right: 8px;
+        }
+
+        code {
+            background-color: #000;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            color: var(--purple);
+            font-size: 0.9em;
+        }
+
+        pre {
+            background-color: #000;
+            padding: 1.2rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            border: 1px solid #333;
+            line-height: 1.5;
+        }
+        pre .comment { color: #6a9955; }
+        pre .keyword { color: #569cd6; }
+        pre .string { color: #ce9178; }
+        pre .func { color: #dcdcaa; }
+        pre .number { color: #b5cea8; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            font-size: 0.92rem;
+        }
+        th {
+            background-color: rgba(56, 189, 248, 0.1);
+            color: var(--accent);
+            text-align: left;
+            padding: 10px 14px;
+            border-bottom: 2px solid var(--accent);
+            font-weight: 600;
+        }
+        td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--panel-bg);
+            border-radius: 10px;
+        }
+        .flow-box {
+            background: var(--panel-bg-alt);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 12px 18px;
+            text-align: center;
+            min-width: 140px;
+            font-size: 0.88rem;
+        }
+        .flow-box strong { color: var(--accent); display: block; margin-bottom: 2px; }
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin: 0 6px;
+        }
+
+        .metric-row {
+            display: flex;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .metric-box {
+            flex: 1;
+            min-width: 180px;
+            background: var(--panel-bg);
+            border-radius: 10px;
+            padding: 1.2rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .metric-box .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--accent);
+        }
+        .metric-box .label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 4px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 1.5rem 0;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--accent);
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+            padding-left: 20px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -26px;
+            top: 6px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: 2px solid var(--bg-dark);
+        }
+        .timeline-item h4 { margin: 0 0 4px 0; }
+        .timeline-item p { margin: 0; color: var(--text-muted); font-size: 0.92rem; }
+
+        .warn-box {
+            background: rgba(245,158,11,0.08);
+            border: 1px solid rgba(245,158,11,0.3);
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+            margin: 1rem 0;
+            font-size: 0.92rem;
+        }
+
+        .demo-section {
+            background-color: var(--panel-bg);
+            padding: 2rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 3rem;
+            border: 1px dashed var(--accent);
+        }
+
+        button {
+            background-color: var(--accent);
+            color: var(--bg-dark);
+            border: none;
+            padding: 10px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+
+        button:hover { background-color: var(--accent-hover); color: #fff; }
+        button:disabled { background-color: var(--text-muted); cursor: not-allowed; }
+
+        #results {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background-color: #000;
+            border-radius: 6px;
+            display: none;
+            text-align: left;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .loading {
+            color: var(--accent);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+
+        .separator {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.06);
+            margin: 3rem 0;
+        }
+
+        .toc {
+            background: var(--panel-bg);
+            padding: 1.5rem 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+        .toc ol { margin: 0; padding-left: 1.2rem; }
+        .toc li { margin: 0.3rem 0; }
+        .toc a { color: var(--accent); text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .flow-diagram { flex-direction: column; }
+            .flow-arrow { transform: rotate(90deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>⚡ AI SDC Profiling: Predictive Debug Architecture</h1>
+        <p class="subtitle">Leveraging Historical Failure Intelligence to Predict Failing Commands for AFHC/ANC Framework</p>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.5rem;">
+            <span class="badge badge-blue">Innovation Days 2026</span>&nbsp;
+            <span class="badge badge-green">DFX Team</span>&nbsp;
+            <span class="badge badge-yellow">ML + Silicon Validation</span>
+        </p>
+    </header>
+
+    <main>
+
+        <!-- TABLE OF CONTENTS -->
+        <nav class="toc">
+            <h3 style="margin-top:0;">Contents</h3>
+            <ol>
+                <li><a href="#executive-summary">Executive Summary</a></li>
+                <li><a href="#problem">Problem Statement — Why This Matters</a></li>
+                <li><a href="#data-landscape">Data Landscape — What We Have in Snowflake</a></li>
+                <li><a href="#architecture">System Architecture Overview</a></li>
+                <li><a href="#data-pipeline">Phase 1: Data Extraction &amp; Pipeline</a></li>
+                <li><a href="#feature-engineering">Phase 2: Feature Engineering &amp; Symptom Encoding</a></li>
+                <li><a href="#model">Phase 3: Predictive Model Design</a></li>
+                <li><a href="#training">Phase 4: Training Strategy &amp; Evaluation</a></li>
+                <li><a href="#inference">Phase 5: Inference — How Prediction Works</a></li>
+                <li><a href="#integration">Phase 6: AFHC/ANC Framework Integration</a></li>
+                <li><a href="#feedback-loop">Phase 7: Continuous Learning &amp; Feedback Loop</a></li>
+                <li><a href="#roadmap">Implementation Roadmap</a></li>
+                <li><a href="#risks">Risk Mitigation</a></li>
+                <li><a href="#demo">Live System Simulation</a></li>
+            </ol>
+        </nav>
+
+        <!-- ============================================================ -->
+        <!-- SECTION 1: EXECUTIVE SUMMARY -->
+        <!-- ============================================================ -->
+        <section id="executive-summary">
+            <h2>1. Executive Summary</h2>
+            <p>
+                Today, when a failing CPU arrives at the debug bench, engineers manually interpret symptoms — MCE codes, bank errors, 
+                boot-stage halts, thermal anomalies — and rely on institutional knowledge to guess which AFHC/ANC commands to run first. 
+                This trial-and-error approach wastes hours of expensive silicon debug time per unit.
+            </p>
+            <p>
+                <strong>We propose building an AI-powered predictive system</strong> that ingests the symptom profile of a new failing CPU 
+                and instantly ranks the AFHC/ANC commands most likely to reproduce or expose the failure — drawing on patterns learned 
+                from <strong>thousands of historically resolved failure cases stored in Snowflake</strong>.
+            </p>
+
+            <div class="metric-row">
+                <div class="metric-box">
+                    <div class="value">1000s</div>
+                    <div class="label">Historical Failure Logs in Snowflake</div>
+                </div>
+                <div class="metric-box">
+                    <div class="value">~70%</div>
+                    <div class="label">Estimated Debug Time Reduction</div>
+                </div>
+                <div class="metric-box">
+                    <div class="value">Top-5</div>
+                    <div class="label">Command Accuracy Target</div>
+                </div>
+                <div class="metric-box">
+                    <div class="value">Real-time</div>
+                    <div class="label">Prediction Latency Goal</div>
+                </div>
+            </div>
+
+            <p>
+                The core insight: <em>failure patterns repeat</em>. A CPU exhibiting UMC Bank 10 errors under high thermal load in 2026 
+                is likely to fail the same commands that historically exposed similar faults. By encoding this knowledge into a machine 
+                learning model, we transform reactive debugging into predictive targeting.
+            </p>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 2: PROBLEM STATEMENT -->
+        <!-- ============================================================ -->
+        <section id="problem">
+            <h2>2. Problem Statement — Why This Matters</h2>
+
+            <div class="grid-2">
+                <div class="card card-highlight">
+                    <h3>🔴 Current State (Reactive)</h3>
+                    <ul>
+                        <li>Engineer receives a failing CPU with vague symptoms (e.g., "intermittent MCE on Bank 10", "fails POST under thermal stress")</li>
+                        <li>Manually selects AFHC/ANC commands to run based on experience and intuition</li>
+                        <li>Runs a broad sweep of diagnostic commands — most of which pass and waste time</li>
+                        <li>Iterates through multiple debug cycles before isolating the failure</li>
+                        <li>Knowledge stays trapped in individual engineers' heads</li>
+                        <li>Average debug turnaround: <strong>hours to days</strong> per unit</li>
+                    </ul>
+                </div>
+                <div class="card card-highlight" style="border-left-color: var(--success);">
+                    <h3>🟢 Proposed State (Predictive)</h3>
+                    <ul>
+                        <li>Engineer inputs observed symptoms into the prediction system</li>
+                        <li>Model cross-references against 1000s of historical cases in milliseconds</li>
+                        <li>Returns a <strong>ranked list of commands</strong> most likely to fail this specific CPU</li>
+                        <li>Engineer runs top-ranked commands first — hits failure on the first or second attempt</li>
+                        <li>Institutional knowledge is captured, codified, and amplified</li>
+                        <li>Average debug turnaround: <strong>minutes</strong> per unit</li>
+                    </ul>
+                </div>
+            </div>
+
+            <h3>The Key Question We're Solving</h3>
+            <p style="font-size: 1.1rem; background: var(--panel-bg); padding: 1.2rem; border-radius: 8px; border-left: 3px solid var(--warning);">
+                <em>"Given a new CPU presenting symptoms <strong>S</strong> = {MCE code, bank ID, error type, thermal state, voltage state, boot stage, stepping, SKU, ...}, 
+                which AFHC/ANC commands <strong>C₁, C₂, ..., Cₖ</strong> have the highest probability of <strong>reproducing/exposing the failure?</strong>"</em>
+            </p>
+            <p>
+                This is fundamentally a <strong>learning-to-rank</strong> problem: we train a model to score every candidate command 
+                against the observed symptom vector, then sort by predicted failure probability.
+            </p>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 3: DATA LANDSCAPE -->
+        <!-- ============================================================ -->
+        <section id="data-landscape">
+            <h2>3. Data Landscape — What We Have in Snowflake</h2>
+
+            <p>
+                Our Snowflake data warehouse contains thousands of historical CPU debug sessions. Each record represents a 
+                <strong>(CPU, Symptom, Command, Outcome)</strong> tuple — the raw material for supervised learning.
+            </p>
+
+            <h3>3.1 Expected Data Schema</h3>
+            <p>The core training data is derived from the intersection of failure intake logs and AFHC/ANC execution results:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Field</th>
+                        <th>Type</th>
+                        <th>Description</th>
+                        <th>Role</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>cpu_id</code></td>
+                        <td>VARCHAR</td>
+                        <td>Unique identifier for the silicon unit</td>
+                        <td>Group key</td>
+                    </tr>
+                    <tr>
+                        <td><code>stepping</code></td>
+                        <td>VARCHAR</td>
+                        <td>Silicon stepping revision (e.g., B0, B1, B2)</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>sku</code></td>
+                        <td>VARCHAR</td>
+                        <td>Product SKU / configuration</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>mce_code</code></td>
+                        <td>VARCHAR</td>
+                        <td>Machine Check Exception hex code (e.g., 0xDEADBEEF)</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>mce_bank</code></td>
+                        <td>INTEGER</td>
+                        <td>MCA bank number (0-31+) indicating error source unit</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>error_type</code></td>
+                        <td>VARCHAR</td>
+                        <td>Error classification (correctable, uncorrectable, fatal, etc.)</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>boot_stage</code></td>
+                        <td>VARCHAR</td>
+                        <td>Stage where failure was observed (POST, OS boot, runtime, stress)</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>thermal_state</code></td>
+                        <td>VARCHAR</td>
+                        <td>Thermal condition at failure (ambient, warm, hot, extreme)</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>voltage_state</code></td>
+                        <td>FLOAT</td>
+                        <td>Core voltage at time of failure (VID)</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>frequency_mhz</code></td>
+                        <td>INTEGER</td>
+                        <td>Operating frequency at failure</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>failing_cores</code></td>
+                        <td>VARCHAR</td>
+                        <td>Bitmask or list of cores exhibiting errors</td>
+                        <td>Feature</td>
+                    </tr>
+                    <tr>
+                        <td><code>symptom_text</code></td>
+                        <td>TEXT</td>
+                        <td>Free-text engineer notes / symptom description</td>
+                        <td>Feature (NLP)</td>
+                    </tr>
+                    <tr>
+                        <td><code>command</code></td>
+                        <td>VARCHAR</td>
+                        <td>AFHC/ANC command that was executed (e.g., <code>stream -t mem_band_max</code>)</td>
+                        <td><strong>Target Label</strong></td>
+                    </tr>
+                    <tr>
+                        <td><code>command_params</code></td>
+                        <td>VARCHAR</td>
+                        <td>Full parameter string of the command</td>
+                        <td><strong>Target Label</strong></td>
+                    </tr>
+                    <tr>
+                        <td><code>result</code></td>
+                        <td>VARCHAR</td>
+                        <td>Execution outcome: <code>PASS</code> or <code>FAIL</code></td>
+                        <td><strong>Target Signal</strong></td>
+                    </tr>
+                    <tr>
+                        <td><code>fail_signature</code></td>
+                        <td>VARCHAR</td>
+                        <td>Detailed failure signature when result=FAIL</td>
+                        <td>Auxiliary label</td>
+                    </tr>
+                    <tr>
+                        <td><code>timestamp</code></td>
+                        <td>TIMESTAMP</td>
+                        <td>When the command was executed</td>
+                        <td>Temporal feature</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>3.2 Data Volume & Quality Considerations</h3>
+            <div class="grid">
+                <div class="card">
+                    <h4>Volume</h4>
+                    <p>With 1000s of CPUs and typically 50-200 commands tested per CPU, we expect <strong>50K-200K+ training rows</strong> — 
+                    a strong foundation for gradient-boosted models. Deep learning approaches may require data augmentation.</p>
+                </div>
+                <div class="card">
+                    <h4>Class Imbalance</h4>
+                    <p>Most command executions <strong>pass</strong> — failures are the minority class. We'll need SMOTE oversampling, 
+                    class-weighted loss functions, or focal loss to prevent the model from defaulting to "predict PASS always."</p>
+                </div>
+                <div class="card">
+                    <h4>Missing Data</h4>
+                    <p>Historical logs may have incomplete fields (e.g., no thermal reading, missing voltage). The pipeline must handle 
+                    nulls gracefully via imputation or dedicated "unknown" categories.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 4: SYSTEM ARCHITECTURE -->
+        <!-- ============================================================ -->
+        <section id="architecture">
+            <h2>4. System Architecture Overview</h2>
+
+            <p>The end-to-end system comprises seven interconnected components:</p>
+
+            <div class="flow-diagram">
+                <div class="flow-box">
+                    <strong>Snowflake</strong>
+                    Historical Logs
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>ETL Pipeline</strong>
+                    Extract &amp; Clean
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>Feature Store</strong>
+                    Symptom Vectors
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>ML Training</strong>
+                    Model Building
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>Model Registry</strong>
+                    Versioned Models
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>Inference API</strong>
+                    MCP Server
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>AFHC/ANC</strong>
+                    Debug Workflow
+                </div>
+            </div>
+
+            <div class="flow-diagram" style="margin-top: 0; border-top: 1px dashed rgba(255,255,255,0.1);">
+                <div class="flow-box" style="border-color: var(--success);">
+                    <strong style="color: var(--success);">Feedback Loop</strong>
+                    Results → Snowflake → Retrain
+                </div>
+                <div class="flow-arrow" style="color: var(--success);">⟲</div>
+                <div style="color: var(--text-muted); font-size: 0.85rem;">
+                    Pass/Fail outcomes from new predictions feed back into Snowflake, 
+                    creating a self-improving cycle
+                </div>
+            </div>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 5: DATA PIPELINE -->
+        <!-- ============================================================ -->
+        <section id="data-pipeline">
+            <h2>5. Phase 1: Data Extraction &amp; Pipeline</h2>
+
+            <h3>5.1 Snowflake Connector</h3>
+            <p>
+                We connect to Snowflake using the <code>snowflake-connector-python</code> library and extract the historical 
+                failure dataset. The query joins intake logs (symptoms) with AFHC/ANC execution results (commands + outcomes).
+            </p>
+
+            <pre>
+<span class="comment">-- Core training data extraction query</span>
+<span class="keyword">SELECT</span>
+    i.cpu_id,
+    i.stepping,
+    i.sku,
+    i.mce_code,
+    i.mce_bank,
+    i.error_type,
+    i.boot_stage,
+    i.thermal_state,
+    i.voltage_state,
+    i.frequency_mhz,
+    i.failing_cores,
+    i.symptom_text,
+    e.command,
+    e.command_params,
+    e.result,              <span class="comment">-- 'PASS' or 'FAIL'</span>
+    e.fail_signature,
+    e.execution_timestamp
+<span class="keyword">FROM</span> sdc_intake_logs i
+<span class="keyword">JOIN</span> afhc_anc_executions e
+    <span class="keyword">ON</span> i.cpu_id = e.cpu_id
+<span class="keyword">WHERE</span> e.execution_timestamp >= <span class="string">'2023-01-01'</span>
+<span class="keyword">ORDER BY</span> i.cpu_id, e.execution_timestamp;
+            </pre>
+
+            <h3>5.2 Data Cleaning Pipeline</h3>
+            <div class="grid-2">
+                <div class="card">
+                    <h4>Normalization Steps</h4>
+                    <ul>
+                        <li><strong>MCE Code Standardization:</strong> Strip prefixes, pad to consistent hex width, extract status/address subfields (MCI_STATUS, MCI_ADDR)</li>
+                        <li><strong>Command Canonicalization:</strong> Normalize command strings (e.g., <code>stream -t mem_band_max -v 1.2</code> → base command <code>stream</code> + parameter tuple)</li>
+                        <li><strong>Thermal/Voltage Bucketing:</strong> Bin continuous values into categorical ranges for model stability</li>
+                        <li><strong>Core Bitmask Parsing:</strong> Convert failing core bitmasks to core count and topology features</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Quality Filters</h4>
+                    <ul>
+                        <li>Remove CPUs with fewer than 5 command executions (insufficient signal)</li>
+                        <li>Discard records where result is NULL or ambiguous</li>
+                        <li>Deduplicate identical command reruns on the same CPU (keep latest)</li>
+                        <li>Flag and handle CPUs that were RMA'd or re-stepped mid-debug</li>
+                        <li>Validate MCE codes against known MCA bank ranges</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 6: FEATURE ENGINEERING -->
+        <!-- ============================================================ -->
+        <section id="feature-engineering">
+            <h2>6. Phase 2: Feature Engineering &amp; Symptom Encoding</h2>
+
+            <p>
+                The critical challenge is converting heterogeneous hardware symptoms into a unified numerical feature vector 
+                that a model can process. We employ a multi-modal encoding strategy:
+            </p>
+
+            <h3>6.1 Structured Feature Categories</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Feature Category</th>
+                        <th>Raw Field(s)</th>
+                        <th>Encoding Method</th>
+                        <th>Output Dimension</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>MCE Identity</strong></td>
+                        <td><code>mce_code</code></td>
+                        <td>Decompose into error code family (bits 15:0), model-specific code (bits 31:16); one-hot encode top-50 families + "other" bucket</td>
+                        <td>~51</td>
+                    </tr>
+                    <tr>
+                        <td><strong>MCA Bank</strong></td>
+                        <td><code>mce_bank</code></td>
+                        <td>One-hot encode (Bank 0=LS, 1=IF, 2=CU, 5=EX, 6=FP, 10=UMC, etc.) — functionally meaningful categories</td>
+                        <td>~20</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Error Severity</strong></td>
+                        <td><code>error_type</code></td>
+                        <td>Ordinal encoding: correctable=1, uncorrectable=2, fatal=3, poison=4</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Boot Stage</strong></td>
+                        <td><code>boot_stage</code></td>
+                        <td>Ordinal: BIOS POST=1, OS Boot=2, Idle=3, Light Load=4, Stress=5</td>
+                        <td>1</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Thermal Context</strong></td>
+                        <td><code>thermal_state</code></td>
+                        <td>Ordinal + continuous: ambient(25°C)=1, warm(45°C)=2, hot(75°C)=3, extreme(95°C)=4</td>
+                        <td>2</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Voltage/Frequency</strong></td>
+                        <td><code>voltage_state</code>, <code>frequency_mhz</code></td>
+                        <td>Standardized continuous (z-score) + V/F ratio derived feature</td>
+                        <td>3</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Silicon Identity</strong></td>
+                        <td><code>stepping</code>, <code>sku</code></td>
+                        <td>Target encoding (encode categorical by mean failure rate) to capture stepping-specific failure propensity</td>
+                        <td>2</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Core Topology</strong></td>
+                        <td><code>failing_cores</code></td>
+                        <td>Count of failing cores, CCD distribution, single-vs-multi flag, core position locality index</td>
+                        <td>4</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Command Identity</strong></td>
+                        <td><code>command</code>, <code>command_params</code></td>
+                        <td>Target-encoded command ID + parameter hash features (stress type, core scope, memory pattern)</td>
+                        <td>~10</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Symptom Text</strong></td>
+                        <td><code>symptom_text</code></td>
+                        <td>TF-IDF on extracted keywords (top-100 terms) or sentence embedding via MiniLM</td>
+                        <td>100 or 384</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>6.2 Derived / Interaction Features</h3>
+            <p>Raw features alone miss crucial interactions. We engineer compound features that encode domain knowledge:</p>
+
+            <div class="grid">
+                <div class="card">
+                    <h4>Bank × Error Type</h4>
+                    <p>An uncorrectable error on Bank 10 (UMC/memory controller) has a completely different diagnostic meaning 
+                    than uncorrectable on Bank 5 (EX/execution unit). Interaction captures this.</p>
+                </div>
+                <div class="card">
+                    <h4>Thermal × Boot Stage</h4>
+                    <p>Failure at POST under extreme thermal suggests a fundamentally different defect than failure during stress 
+                    at ambient temperature. This cross-feature captures condition-severity.</p>
+                </div>
+                <div class="card">
+                    <h4>V/F Margin Index</h4>
+                    <p>Ratio of <code>(voltage - Vmin) / (Vmax - Vmin)</code> at the observed frequency. CPUs failing near the margin 
+                    edge exhibit different command sensitivities than those failing deep in the safe zone.</p>
+                </div>
+                <div class="card">
+                    <h4>Historical Command Hit Rate</h4>
+                    <p>For each command, compute its historical failure rate <em>given this bank type</em>. Acts as a strong prior: 
+                    if <code>stream</code> fails 40% of the time for Bank 10 symptoms, the model gets an immediate signal.</p>
+                </div>
+            </div>
+
+            <h3>6.3 Final Feature Vector</h3>
+            <pre>
+<span class="comment"># Conceptual feature vector for one (CPU, Command) pair</span>
+feature_vector = [
+    <span class="comment"># --- Symptom features (fixed for a given CPU) ---</span>
+    mce_family_onehot[<span class="number">0</span>:<span class="number">51</span>],       <span class="comment"># MCE error family</span>
+    mca_bank_onehot[<span class="number">0</span>:<span class="number">20</span>],         <span class="comment"># MCA bank one-hot</span>
+    error_severity,                  <span class="comment"># ordinal 1-4</span>
+    boot_stage,                      <span class="comment"># ordinal 1-5</span>
+    thermal_ordinal, thermal_celsius, <span class="comment"># thermal features</span>
+    voltage_zscore, freq_zscore, vf_ratio, <span class="comment"># V/F features</span>
+    stepping_target_enc, sku_target_enc,    <span class="comment"># silicon identity</span>
+    core_count, ccd_dist, multi_core_flag, locality_idx, <span class="comment"># topology</span>
+    bank_x_error_interaction,        <span class="comment"># interaction feature</span>
+    thermal_x_bootstage_interaction, <span class="comment"># interaction feature</span>
+    vf_margin_index,                 <span class="comment"># derived feature</span>
+
+    <span class="comment"># --- Command features (varies per candidate command) ---</span>
+    command_target_enc,              <span class="comment"># command identity</span>
+    command_param_features[<span class="number">0</span>:<span class="number">8</span>],    <span class="comment"># parameter characteristics</span>
+    command_hist_fail_rate_for_bank, <span class="comment"># prior failure rate</span>
+
+    <span class="comment"># --- Text embedding (optional NLP branch) ---</span>
+    symptom_text_embedding[<span class="number">0</span>:<span class="number">100</span>],  <span class="comment"># TF-IDF or dense embedding</span>
+]
+<span class="comment"># Total dimensions: ~200-500 depending on encoding choices</span>
+            </pre>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 7: MODEL DESIGN -->
+        <!-- ============================================================ -->
+        <section id="model">
+            <h2>7. Phase 3: Predictive Model Design</h2>
+
+            <h3>7.1 Problem Formulation</h3>
+            <p>
+                We frame this as a <strong>pointwise learning-to-rank</strong> problem. For each candidate command <em>c</em> and 
+                symptom vector <em>s</em>, we predict:
+            </p>
+            <p style="text-align: center; font-size: 1.2rem; padding: 1rem; background: var(--panel-bg); border-radius: 8px;">
+                <strong>P(result = FAIL | symptoms = s, command = c)</strong>
+            </p>
+            <p>
+                At inference time, we score every candidate AFHC/ANC command against the new CPU's symptoms and return the 
+                top-K commands ranked by descending failure probability.
+            </p>
+
+            <h3>7.2 Model Options &amp; Recommendation</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Approach</th>
+                        <th>Algorithm</th>
+                        <th>Pros</th>
+                        <th>Cons</th>
+                        <th>Fit</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Gradient Boosting</strong></td>
+                        <td>XGBoost / LightGBM</td>
+                        <td>Handles tabular data superbly; works well with mixed feature types; fast training; built-in feature importance; minimal tuning needed; handles missing data</td>
+                        <td>Doesn't natively capture sequential patterns</td>
+                        <td><span class="badge badge-green">★★★ Recommended</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Neural Ranker</strong></td>
+                        <td>Two-tower / Cross-network</td>
+                        <td>Learns complex non-linear interactions; can incorporate text embeddings end-to-end</td>
+                        <td>Needs more data; harder to interpret; slower to iterate</td>
+                        <td><span class="badge badge-yellow">★★ Future Phase</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Nearest Neighbor</strong></td>
+                        <td>FAISS / Similarity Search</td>
+                        <td>Interpretable ("similar CPUs failed these commands"); no training needed; can serve as baseline</td>
+                        <td>Curse of dimensionality; sensitive to feature scaling; no probability calibration</td>
+                        <td><span class="badge badge-blue">★★ Ensemble Component</span></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Multi-label Classification</strong></td>
+                        <td>Classifier chains / Binary relevance</td>
+                        <td>Directly predicts failing command set; captures label correlations</td>
+                        <td>Doesn't rank well; struggles with new commands</td>
+                        <td><span class="badge badge-yellow">★ Alternative</span></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>7.3 Recommended Architecture: Two-Stage Pipeline</h3>
+            <div class="flow-diagram">
+                <div class="flow-box" style="border-color: var(--warning);">
+                    <strong style="color: var(--warning);">Stage 1: Retrieval</strong>
+                    Nearest-neighbor lookup<br>→ Top-50 candidate commands
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="border-color: var(--success);">
+                    <strong style="color: var(--success);">Stage 2: Ranking</strong>
+                    LightGBM ranker scores<br>each candidate → Top-5
+                </div>
+            </div>
+
+            <p>
+                <strong>Stage 1 (Retrieval):</strong> Embed the symptom vector and find the 50 most similar historical CPUs using 
+                FAISS vector index. Collect the union of all commands that failed on those similar CPUs. This gives us a candidate 
+                shortlist — dramatically reducing the scoring space.
+            </p>
+            <p>
+                <strong>Stage 2 (Ranking):</strong> For each candidate command from Stage 1, construct a (symptom, command) feature 
+                vector and score it through a LightGBM binary classifier trained to predict P(FAIL). Rank by predicted probability 
+                and present the top-5 to the engineer.
+            </p>
+
+            <div class="warn-box">
+                <strong>⚠ Why two stages?</strong> The AFHC/ANC command space may contain hundreds of distinct commands. Scoring all 
+                of them for every query is feasible for tree models, but the retrieval stage provides a similarity-based prior that 
+                significantly boosts ranking quality — especially for rare failure modes with limited training data.
+            </div>
+
+            <h3>7.4 LightGBM Configuration</h3>
+            <pre>
+<span class="keyword">import</span> lightgbm <span class="keyword">as</span> lgb
+
+params = {
+    <span class="string">'objective'</span>: <span class="string">'binary'</span>,           <span class="comment"># predict P(FAIL)</span>
+    <span class="string">'metric'</span>: [<span class="string">'auc'</span>, <span class="string">'binary_logloss'</span>],
+    <span class="string">'boosting_type'</span>: <span class="string">'gbdt'</span>,
+    <span class="string">'num_leaves'</span>: <span class="number">127</span>,
+    <span class="string">'learning_rate'</span>: <span class="number">0.05</span>,
+    <span class="string">'feature_fraction'</span>: <span class="number">0.8</span>,
+    <span class="string">'bagging_fraction'</span>: <span class="number">0.8</span>,
+    <span class="string">'bagging_freq'</span>: <span class="number">5</span>,
+    <span class="string">'scale_pos_weight'</span>: <span class="number">5.0</span>,         <span class="comment"># handle class imbalance (FAIL is minority)</span>
+    <span class="string">'min_child_samples'</span>: <span class="number">20</span>,
+    <span class="string">'verbose'</span>: -<span class="number">1</span>,
+}
+
+<span class="comment"># Train with Optuna for hyperparameter optimization</span>
+<span class="keyword">import</span> optuna
+<span class="keyword">def</span> <span class="func">objective</span>(trial):
+    params[<span class="string">'num_leaves'</span>] = trial.suggest_int(<span class="string">'num_leaves'</span>, <span class="number">31</span>, <span class="number">255</span>)
+    params[<span class="string">'learning_rate'</span>] = trial.suggest_float(<span class="string">'lr'</span>, <span class="number">0.01</span>, <span class="number">0.1</span>, log=<span class="keyword">True</span>)
+    params[<span class="string">'scale_pos_weight'</span>] = trial.suggest_float(<span class="string">'spw'</span>, <span class="number">1.0</span>, <span class="number">10.0</span>)
+    <span class="comment"># ... k-fold CV, return mean AUC</span>
+            </pre>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 8: TRAINING STRATEGY -->
+        <!-- ============================================================ -->
+        <section id="training">
+            <h2>8. Phase 4: Training Strategy &amp; Evaluation</h2>
+
+            <h3>8.1 Data Splitting — Temporal + Group-Aware</h3>
+            <p>
+                Standard random train/test splits leak information because the same CPU's commands appear in both sets. 
+                We use a <strong>grouped temporal split</strong>:
+            </p>
+            <div class="grid">
+                <div class="card">
+                    <h4>Training Set (70%)</h4>
+                    <p>CPUs debugged before cutoff date <em>T</em>. Model learns from historical patterns.</p>
+                </div>
+                <div class="card">
+                    <h4>Validation Set (15%)</h4>
+                    <p>CPUs debugged between <em>T</em> and <em>T+Δ</em>. Used for hyperparameter tuning and early stopping.</p>
+                </div>
+                <div class="card">
+                    <h4>Test Set (15%)</h4>
+                    <p>CPUs debugged after <em>T+Δ</em>. Final held-out evaluation — never touched during training.</p>
+                </div>
+            </div>
+
+            <div class="warn-box">
+                <strong>⚠ Critical:</strong> Splitting by <code>cpu_id</code> group prevents data leakage. A CPU's symptoms in training 
+                must never appear in test. The temporal ordering also ensures we evaluate on "future" CPUs — matching real deployment conditions.
+            </div>
+
+            <h3>8.2 Evaluation Metrics</h3>
+            <p>Since this is a ranking problem, we care about the model's ability to surface failing commands at the top of the list:</p>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Definition</th>
+                        <th>Target</th>
+                        <th>Why It Matters</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Hit@5</strong></td>
+                        <td>% of CPUs where at least one true failing command appears in the top-5 predictions</td>
+                        <td>≥ 85%</td>
+                        <td>Primary metric — does the engineer find a failing command quickly?</td>
+                    </tr>
+                    <tr>
+                        <td><strong>NDCG@10</strong></td>
+                        <td>Normalized Discounted Cumulative Gain at rank 10</td>
+                        <td>≥ 0.70</td>
+                        <td>Measures ranking quality — are the <em>most</em> diagnostic commands ranked highest?</td>
+                    </tr>
+                    <tr>
+                        <td><strong>AUC-ROC</strong></td>
+                        <td>Area Under the Receiver Operating Curve</td>
+                        <td>≥ 0.90</td>
+                        <td>Overall discrimination between pass/fail predictions</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Precision@5</strong></td>
+                        <td>Among top-5 predicted commands, what fraction actually fail?</td>
+                        <td>≥ 50%</td>
+                        <td>Reduces wasted test time on commands that won't fail</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Mean Reciprocal Rank</strong></td>
+                        <td>Average of 1/rank of first correct (failing) command</td>
+                        <td>≥ 0.65</td>
+                        <td>Measures how quickly engineer hits the first failure</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>8.3 Cross-Validation Strategy</h3>
+            <pre>
+<span class="keyword">from</span> sklearn.model_selection <span class="keyword">import</span> GroupKFold
+
+<span class="comment"># 5-fold CV grouped by cpu_id — no CPU spans multiple folds</span>
+gkf = GroupKFold(n_splits=<span class="number">5</span>)
+<span class="keyword">for</span> fold, (train_idx, val_idx) <span class="keyword">in</span> enumerate(gkf.split(X, y, groups=cpu_ids)):
+    X_train, X_val = X[train_idx], X[val_idx]
+    y_train, y_val = y[train_idx], y[val_idx]
+
+    model = lgb.LGBMClassifier(**params)
+    model.fit(
+        X_train, y_train,
+        eval_set=[(X_val, y_val)],
+        callbacks=[lgb.early_stopping(<span class="number">50</span>), lgb.log_evaluation(<span class="number">100</span>)]
+    )
+
+    <span class="comment"># Evaluate ranking metrics per-CPU</span>
+    <span class="func">evaluate_ranking</span>(model, X_val, y_val, cpu_ids[val_idx])
+            </pre>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 9: INFERENCE -->
+        <!-- ============================================================ -->
+        <section id="inference">
+            <h2>9. Phase 5: Inference — How Prediction Works</h2>
+
+            <p>When a new failing CPU arrives at the bench, the prediction pipeline executes in under 500ms:</p>
+
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h4>Step 1: Symptom Intake</h4>
+                    <p>Engineer enters observed symptoms: MCE code, bank, error type, thermal/voltage conditions, boot stage, 
+                    and any free-text notes. Can also auto-ingest from BIOS logs or system event records.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Step 2: Feature Encoding</h4>
+                    <p>The symptom encoder transforms raw inputs into the standardized feature vector using the same pipeline 
+                    trained offline. Missing fields are handled via imputation defaults.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Step 3: Candidate Retrieval (Stage 1)</h4>
+                    <p>The FAISS index finds the 50 most similar historical CPUs by symptom vector cosine similarity. 
+                    The union of their failing commands becomes the candidate set.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Step 4: Candidate Scoring (Stage 2)</h4>
+                    <p>For each candidate command, construct the full (symptom, command) feature vector and score through the 
+                    LightGBM model. Returns P(FAIL) for each command.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Step 5: Ranked Output</h4>
+                    <p>Commands are sorted by descending P(FAIL) and the top-K (default 5) are presented to the engineer with 
+                    confidence scores and links to the most similar historical cases for reference.</p>
+                </div>
+            </div>
+
+            <h3>Inference Data Flow</h3>
+            <pre>
+<span class="comment"># Pseudocode: end-to-end inference</span>
+<span class="keyword">def</span> <span class="func">predict_failing_commands</span>(symptoms: dict, top_k: int = <span class="number">5</span>):
+    <span class="comment"># Step 1: Encode symptoms</span>
+    symptom_vector = feature_encoder.<span class="func">transform</span>(symptoms)
+
+    <span class="comment"># Step 2: Retrieve similar historical CPUs</span>
+    similar_cpu_ids, distances = faiss_index.<span class="func">search</span>(symptom_vector, k=<span class="number">50</span>)
+
+    <span class="comment"># Step 3: Gather candidate commands (union of failing cmds from similar CPUs)</span>
+    candidate_commands = db.<span class="func">get_failing_commands</span>(similar_cpu_ids)
+
+    <span class="comment"># Step 4: Score each candidate</span>
+    scores = []
+    <span class="keyword">for</span> cmd <span class="keyword">in</span> candidate_commands:
+        feature_vec = <span class="func">build_pair_features</span>(symptom_vector, cmd)
+        prob_fail = model.<span class="func">predict_proba</span>(feature_vec)[<span class="number">1</span>]
+        scores.append((cmd, prob_fail))
+
+    <span class="comment"># Step 5: Rank and return top-K</span>
+    scores.sort(key=<span class="keyword">lambda</span> x: x[<span class="number">1</span>], reverse=<span class="keyword">True</span>)
+    <span class="keyword">return</span> scores[:top_k]
+            </pre>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 10: AFHC/ANC INTEGRATION -->
+        <!-- ============================================================ -->
+        <section id="integration">
+            <h2>10. Phase 6: AFHC/ANC Framework Integration</h2>
+
+            <p>
+                The model must be seamlessly accessible within the existing AFHC (Adaptive Failure Hit Characterization) and 
+                ANC (Automated Node Characterization) debug workflows. We propose three integration surfaces:
+            </p>
+
+            <div class="grid">
+                <div class="card card-highlight">
+                    <h3>🔌 MCP Server (Primary)</h3>
+                    <p>
+                        Wrap the prediction engine in a <strong>Model Context Protocol (MCP) server</strong> that exposes tools 
+                        to any MCP-compatible client (VS Code + Copilot, CLI agents, Jupyter notebooks).
+                    </p>
+                    <h4>Exposed MCP Tools:</h4>
+                    <ul>
+                        <li><code>predict_commands(symptoms)</code> — Returns ranked failing commands</li>
+                        <li><code>get_similar_cases(symptoms, k)</code> — Returns similar historical CPUs for reference</li>
+                        <li><code>explain_prediction(symptoms, command)</code> — SHAP-based explanation of why a command was ranked high</li>
+                        <li><code>submit_feedback(cpu_id, command, result)</code> — Closes the feedback loop</li>
+                    </ul>
+                    <pre>
+<span class="comment"># MCP tool definition example</span>
+@mcp_server.<span class="func">tool</span>()
+<span class="keyword">async def</span> <span class="func">predict_commands</span>(
+    mce_code: str,
+    mce_bank: int,
+    error_type: str,
+    boot_stage: str = <span class="string">"unknown"</span>,
+    thermal_state: str = <span class="string">"unknown"</span>,
+    voltage: float = <span class="keyword">None</span>,
+    symptom_notes: str = <span class="string">""</span>,
+    top_k: int = <span class="number">5</span>
+) -> list[CommandPrediction]:
+    <span class="string">"""Predict the top-K AFHC/ANC commands most likely
+    to fail on a CPU exhibiting the given symptoms."""</span>
+    symptoms = <span class="func">build_symptom_dict</span>(...)
+    <span class="keyword">return</span> prediction_engine.<span class="func">predict</span>(symptoms, top_k)
+                    </pre>
+                </div>
+
+                <div class="card card-highlight" style="border-left-color: var(--success);">
+                    <h3>🖥️ REST API (Secondary)</h3>
+                    <p>
+                        A lightweight FastAPI service for direct HTTP integration from scripts, internal tools, and dashboards.
+                    </p>
+                    <pre>
+POST /api/v1/predict
+{
+  <span class="string">"mce_code"</span>: <span class="string">"0xBEEF0010"</span>,
+  <span class="string">"mce_bank"</span>: <span class="number">10</span>,
+  <span class="string">"error_type"</span>: <span class="string">"uncorrectable"</span>,
+  <span class="string">"thermal_state"</span>: <span class="string">"hot"</span>,
+  <span class="string">"boot_stage"</span>: <span class="string">"stress"</span>,
+  <span class="string">"top_k"</span>: <span class="number">5</span>
+}
+
+Response:
+{
+  <span class="string">"predictions"</span>: [
+    {<span class="string">"command"</span>: <span class="string">"stream -t mem_band_max"</span>,
+     <span class="string">"prob_fail"</span>: <span class="number">0.942</span>,
+     <span class="string">"similar_cases"</span>: <span class="number">23</span>},
+    ...
+  ]
+}
+                    </pre>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top: 1.5rem;">
+                <h3>🔄 AFHC/ANC Script Hook (Tertiary)</h3>
+                <p>For engineers who prefer the existing command-line AFHC/ANC workflow, inject a <strong>pre-execution hook</strong> 
+                that queries the model before running the standard diagnostic sweep:</p>
+                <pre>
+<span class="comment"># In the AFHC/ANC wrapper script</span>
+<span class="comment"># Before running the full command suite, query the predictor</span>
+$ afhc-predict --mce 0xBEEF0010 --bank 10 --thermal hot
+
+<span class="comment">╔══════════════════════════════════════════════════════════════╗</span>
+<span class="comment">║  AI SDC Profiler — Predicted Failing Commands               ║</span>
+<span class="comment">╠══════════════════════════════════════════════════════════════╣</span>
+<span class="comment">║  #1  94.2%  stream -t mem_band_max -v 1.2                   ║</span>
+<span class="comment">║  #2  87.5%  mprime -t L3_stress_umc                         ║</span>
+<span class="comment">║  #3  62.1%  linpack -c all_cores -fpu_only                  ║</span>
+<span class="comment">║  #4  45.8%  membw -p read_write -s 4G                       ║</span>
+<span class="comment">║  #5  33.2%  y-cruncher -t swp_stress                        ║</span>
+<span class="comment">╚══════════════════════════════════════════════════════════════╝</span>
+
+<span class="comment"># Engineer chooses to run top commands first</span>
+$ afhc-run --priority-list "stream,mprime,linpack"
+                </pre>
+            </div>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 11: FEEDBACK LOOP -->
+        <!-- ============================================================ -->
+        <section id="feedback-loop">
+            <h2>11. Phase 7: Continuous Learning &amp; Feedback Loop</h2>
+
+            <p>
+                The system's most powerful feature is its <strong>self-improving nature</strong>. Every prediction that gets tested 
+                generates new labeled data that flows back into the training set.
+            </p>
+
+            <div class="flow-diagram">
+                <div class="flow-box">
+                    <strong>New CPU</strong>
+                    Symptoms observed
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>Model Predicts</strong>
+                    Top-K commands
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>Engineer Runs</strong>
+                    Commands on bench
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box">
+                    <strong>Results Logged</strong>
+                    Pass/Fail → Snowflake
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-box" style="border-color: var(--success);">
+                    <strong style="color: var(--success);">Model Retrained</strong>
+                    Weekly/on-trigger
+                </div>
+            </div>
+
+            <h3>11.1 Feedback Data Schema</h3>
+            <pre>
+<span class="comment">-- Written back to Snowflake after each prediction session</span>
+<span class="keyword">INSERT INTO</span> sdc_prediction_feedback (
+    cpu_id,
+    prediction_timestamp,
+    model_version,
+    predicted_command,
+    predicted_rank,
+    predicted_prob_fail,
+    actual_result,          <span class="comment">-- 'PASS', 'FAIL', or 'NOT_RUN'</span>
+    engineer_id,
+    notes
+) <span class="keyword">VALUES</span> (...);
+            </pre>
+
+            <h3>11.2 Retraining Triggers</h3>
+            <div class="grid">
+                <div class="card">
+                    <h4>📅 Scheduled (Weekly)</h4>
+                    <p>Every Sunday night, retrain the model on the latest Snowflake snapshot. Compare against the current 
+                    production model on a held-out set. Auto-promote if metrics improve.</p>
+                </div>
+                <div class="card">
+                    <h4>📊 Drift Detection</h4>
+                    <p>Monitor prediction confidence distribution. If average confidence drops below threshold or Hit@5 on 
+                    recent predictions degrades, trigger immediate retraining.</p>
+                </div>
+                <div class="card">
+                    <h4>🆕 New Stepping/SKU</h4>
+                    <p>When a new silicon stepping enters the debug pipeline, the model may have zero training data for it. 
+                    Trigger retraining with transfer learning from the closest known stepping.</p>
+                </div>
+            </div>
+
+            <h3>11.3 Model Versioning &amp; Rollback</h3>
+            <p>
+                Each trained model is versioned with its training data hash, hyperparameters, and evaluation metrics. 
+                If a new model performs worse, automatic rollback to the previous version ensures zero regression.
+            </p>
+            <pre>
+models/
+├── v1.0.0/   <span class="comment"># baseline model — 2024 data</span>
+│   ├── model.lgb
+│   ├── feature_encoder.pkl
+│   ├── faiss_index.bin
+│   ├── metadata.json    <span class="comment"># {auc: 0.91, hit5: 0.83, data_hash: "abc..."}</span>
+│   └── eval_report.html
+├── v1.1.0/   <span class="comment"># retrained with 2025 Q1 data</span>
+│   └── ...
+└── v1.2.0/   <span class="comment"># latest — includes feedback loop data</span>
+    └── ...
+            </pre>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 12: EXPLAINABILITY -->
+        <!-- ============================================================ -->
+        <section>
+            <h2>12. Explainability — Why Did the Model Recommend This?</h2>
+
+            <p>
+                Trust is critical in silicon debug. Engineers need to understand <em>why</em> the model recommends a command, 
+                not just that it does. We provide explanations at two levels:
+            </p>
+
+            <div class="grid-2">
+                <div class="card">
+                    <h3>🔍 Global Feature Importance</h3>
+                    <p>
+                        LightGBM's built-in feature importance (gain-based) reveals which symptom categories drive predictions 
+                        across all CPUs. Expect <code>mce_bank</code>, <code>mce_family</code>, and <code>command_hist_fail_rate</code> 
+                        to dominate.
+                    </p>
+                    <pre>
+Top Global Features:
+1. command_hist_fail_rate_for_bank  (32.1%)
+2. mce_family_UMC                  (15.4%)
+3. mca_bank_10                     (12.8%)
+4. thermal_x_bootstage             ( 9.2%)
+5. vf_margin_index                 ( 7.6%)
+                    </pre>
+                </div>
+                <div class="card">
+                    <h3>📋 Per-Prediction SHAP Values</h3>
+                    <p>
+                        For each individual prediction, SHAP (SHapley Additive exPlanations) decomposes the model's output into 
+                        per-feature contributions. This tells the engineer exactly which symptoms pushed a command to the top.
+                    </p>
+                    <pre>
+Explaining: stream -t mem_band_max (P=0.942)
+───────────────────────────────────
+Base rate:           0.12
++ mce_bank=10 (UMC): +0.38
++ thermal=hot:        +0.21
++ error=uncorrectable:+0.14
++ vf_margin=0.15:     +0.09
+───────────────────────────────────
+Final prediction:    0.942
+                    </pre>
+                </div>
+            </div>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 13: ROADMAP -->
+        <!-- ============================================================ -->
+        <section id="roadmap">
+            <h2>13. Implementation Roadmap</h2>
+
+            <div class="timeline">
+                <div class="timeline-item">
+                    <h4>Phase 0 — Data Discovery &amp; Feasibility (Weeks 1-2)</h4>
+                    <p>Audit Snowflake tables. Confirm data volume, schema, and quality. Identify required joins. 
+                    Build EDA notebook with distribution analysis. Validate that sufficient FAIL labels exist for training.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Phase 1 — ETL Pipeline &amp; Feature Store (Weeks 3-4)</h4>
+                    <p>Build Snowflake extraction queries. Implement feature encoding pipeline in Python. 
+                    Create reproducible dataset snapshots. Unit test all transformations.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Phase 2 — Baseline Model (Weeks 5-6)</h4>
+                    <p>Train LightGBM on initial feature set. Establish baseline metrics (AUC, Hit@5, NDCG@10). 
+                    Build FAISS retrieval index. Validate on held-out temporal test set.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Phase 3 — Feature Iteration &amp; Optimization (Weeks 7-8)</h4>
+                    <p>Add interaction features, text embeddings, and engineered priors. Run Optuna hyperparameter search. 
+                    Target: Hit@5 ≥ 85%, AUC ≥ 0.90. Implement SHAP explanations.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Phase 4 — Integration &amp; MCP Server (Weeks 9-10)</h4>
+                    <p>Build MCP server with prediction tools. Deploy FastAPI endpoint. Create AFHC/ANC CLI hook. 
+                    Build feedback loop data writer. End-to-end integration testing.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Phase 5 — Pilot &amp; Validation (Weeks 11-12)</h4>
+                    <p>Deploy to 2-3 debug engineers for real-world testing. Collect prediction accuracy on live CPUs. 
+                    Measure time-to-first-fail improvement. Iterate based on feedback.</p>
+                </div>
+                <div class="timeline-item">
+                    <h4>Phase 6 — Production &amp; Continuous Learning (Week 13+)</h4>
+                    <p>Activate weekly retraining pipeline. Monitor drift metrics. Expand to additional teams. 
+                    Document and share best practices.</p>
+                </div>
+            </div>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 14: RISKS -->
+        <!-- ============================================================ -->
+        <section id="risks">
+            <h2>14. Risk Mitigation</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Risk</th>
+                        <th>Impact</th>
+                        <th>Likelihood</th>
+                        <th>Mitigation</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Insufficient FAIL labels</strong> — most commands pass, leaving sparse failure signal</td>
+                        <td><span class="badge badge-red">High</span></td>
+                        <td><span class="badge badge-yellow">Medium</span></td>
+                        <td>Class-weighted loss, SMOTE oversampling, focal loss. Also: collect "near-miss" data where commands showed anomalies but didn't hard-fail.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>New failure mode never seen</strong> — novel silicon defect with no historical precedent</td>
+                        <td><span class="badge badge-yellow">Medium</span></td>
+                        <td><span class="badge badge-yellow">Medium</span></td>
+                        <td>Fall back to nearest-neighbor retrieval (Stage 1) which provides reasonable candidates even for novel symptoms. Flag low-confidence predictions for manual review.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data quality issues</strong> — inconsistent logging, missing fields, duplicate records</td>
+                        <td><span class="badge badge-yellow">Medium</span></td>
+                        <td><span class="badge badge-red">High</span></td>
+                        <td>Invest heavily in Phase 0 data audit. Build robust cleaning pipeline with validation checks. Use models (LightGBM) that handle missing data natively.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Concept drift</strong> — new steppings have different failure patterns</td>
+                        <td><span class="badge badge-yellow">Medium</span></td>
+                        <td><span class="badge badge-yellow">Medium</span></td>
+                        <td>Weekly retraining, drift detection monitoring, stepping-aware feature encoding. Use stepping as a feature so the model learns stepping-specific patterns.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Engineer distrust</strong> — "I don't trust the black box"</td>
+                        <td><span class="badge badge-red">High</span></td>
+                        <td><span class="badge badge-yellow">Medium</span></td>
+                        <td>SHAP explanations for every prediction. Show similar historical cases. Present as "recommendation" not "directive". Allow engineers to override and flag bad predictions.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Snowflake access / latency</strong> — cold start or query bottlenecks</td>
+                        <td><span class="badge badge-blue">Low</span></td>
+                        <td><span class="badge badge-blue">Low</span></td>
+                        <td>Cache training data locally. Inference uses pre-built FAISS index + serialized model — no live Snowflake dependency at prediction time.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 15: TECH STACK -->
+        <!-- ============================================================ -->
+        <section>
+            <h2>15. Technology Stack</h2>
+
+            <div class="grid">
+                <div class="card">
+                    <h4>Data Layer</h4>
+                    <ul>
+                        <li><strong>Snowflake</strong> — Primary data warehouse</li>
+                        <li><strong>snowflake-connector-python</strong> — Data extraction</li>
+                        <li><strong>Pandas / Polars</strong> — Data manipulation</li>
+                        <li><strong>Great Expectations</strong> — Data quality validation</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>ML Layer</h4>
+                    <ul>
+                        <li><strong>LightGBM</strong> — Primary ranking model</li>
+                        <li><strong>FAISS</strong> — Vector similarity retrieval</li>
+                        <li><strong>Optuna</strong> — Hyperparameter optimization</li>
+                        <li><strong>SHAP</strong> — Model explainability</li>
+                        <li><strong>scikit-learn</strong> — Feature encoding &amp; metrics</li>
+                    </ul>
+                </div>
+                <div class="card">
+                    <h4>Serving Layer</h4>
+                    <ul>
+                        <li><strong>FastMCP</strong> — MCP server framework</li>
+                        <li><strong>FastAPI</strong> — REST API</li>
+                        <li><strong>Docker</strong> — Containerized deployment</li>
+                        <li><strong>MLflow</strong> — Model registry &amp; versioning</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <hr class="separator">
+
+        <!-- ============================================================ -->
+        <!-- SECTION 16: DEMO -->
+        <!-- ============================================================ -->
+        <section id="demo" class="demo-section">
+            <h2 style="border-left: none; text-align: center;">Live System Simulation</h2>
+            <p>Enter symptoms from a new silicon unit to see the predictive engine in action.</p>
+
+            <div style="text-align: left; max-width: 600px; margin: 0 auto 1.5rem auto;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 0.85rem;">MCA Bank:</label>
+                        <select id="bankInput" style="width:100%; padding:8px; background:#000; color:var(--text-main); border:1px solid #333; border-radius:4px; font-family:monospace;">
+                            <option value="10">Bank 10 — UMC (Memory Controller)</option>
+                            <option value="5">Bank 5 — EX (Execution Unit)</option>
+                            <option value="6">Bank 6 — FP (Floating Point)</option>
+                            <option value="0">Bank 0 — LS (Load-Store)</option>
+                            <option value="1">Bank 1 — IF (Instruction Fetch)</option>
+                            <option value="2">Bank 2 — CU (Combined Unit)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 0.85rem;">Error Type:</label>
+                        <select id="errorInput" style="width:100%; padding:8px; background:#000; color:var(--text-main); border:1px solid #333; border-radius:4px; font-family:monospace;">
+                            <option value="uncorrectable">Uncorrectable</option>
+                            <option value="correctable">Correctable</option>
+                            <option value="fatal">Fatal</option>
+                            <option value="poison">Data Poison</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 0.85rem;">Thermal State:</label>
+                        <select id="thermalInput" style="width:100%; padding:8px; background:#000; color:var(--text-main); border:1px solid #333; border-radius:4px; font-family:monospace;">
+                            <option value="hot">Hot (75°C+)</option>
+                            <option value="ambient">Ambient (25°C)</option>
+                            <option value="warm">Warm (45°C)</option>
+                            <option value="extreme">Extreme (95°C+)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 0.85rem;">Boot Stage:</label>
+                        <select id="bootInput" style="width:100%; padding:8px; background:#000; color:var(--text-main); border:1px solid #333; border-radius:4px; font-family:monospace;">
+                            <option value="stress">Stress Test</option>
+                            <option value="post">BIOS POST</option>
+                            <option value="os_boot">OS Boot</option>
+                            <option value="idle">Idle</option>
+                            <option value="light_load">Light Load</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 4px; color: var(--text-muted); font-size: 0.85rem;">MCE Code:</label>
+                    <input id="mceInput" type="text" value="0xBEEF0010" style="width:100%; padding:8px; background:#000; color:var(--purple); border:1px solid #333; border-radius:4px; font-family:monospace;">
+                </div>
+            </div>
+
+            <button id="predictBtn" onclick="runPrediction()">⚡ Generate Command Recommendations</button>
+
+            <div id="results">
+                <div id="loadingText" class="loading">
+                    [1/3] Encoding symptom vector...<br>
+                    [2/3] Querying FAISS index for similar CPUs...<br>
+                    [3/3] Scoring candidate commands via LightGBM...
+                </div>
+                <div id="outputData" style="display: none;"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer style="margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.06); color: var(--text-muted); font-size: 0.85rem; text-align: center;">
+        <p>AI SDC Profiling — DFX Innovation Days 2026 | Predictive Debug Architecture for AFHC/ANC Framework</p>
+    </footer>
+
+    <script>
+        // Simulated prediction results keyed by bank number
+        const predictionDB = {
+            "10": { // UMC - Memory Controller
+                commands: [
+                    { cmd: "stream -t mem_band_max -v 1.2", prob: 0.942, similar: 23 },
+                    { cmd: "mprime -t L3_stress_umc", prob: 0.875, similar: 18 },
+                    { cmd: "membw -p read_write -s 4G", prob: 0.721, similar: 14 },
+                    { cmd: "linpack -c all_cores -fpu_only", prob: 0.621, similar: 11 },
+                    { cmd: "y-cruncher -t swp_stress", prob: 0.332, similar: 6 },
+                ],
+                explanation: "Bank 10 (UMC) faults strongly correlate with memory-bandwidth-intensive workloads. The model prioritizes commands that stress the memory controller and L3 cache interface."
+            },
+            "5": { // EX - Execution Unit
+                commands: [
+                    { cmd: "prime95 -t small_fft -c all", prob: 0.918, similar: 31 },
+                    { cmd: "linpack -c all_cores -avx512", prob: 0.856, similar: 27 },
+                    { cmd: "coremark -t integer_heavy", prob: 0.744, similar: 15 },
+                    { cmd: "spec_cpu -t 502.gcc_r", prob: 0.598, similar: 9 },
+                    { cmd: "ycruncher -t pi_1b", prob: 0.412, similar: 7 },
+                ],
+                explanation: "Bank 5 (EX) faults correlate with integer/ALU-intensive workloads. The model prioritizes compute-heavy commands that stress the execution pipeline."
+            },
+            "6": { // FP - Floating Point
+                commands: [
+                    { cmd: "linpack -c all_cores -fpu_only", prob: 0.961, similar: 35 },
+                    { cmd: "prime95 -t large_fft -fma3", prob: 0.889, similar: 28 },
+                    { cmd: "y-cruncher -t pi_25b -avx2", prob: 0.812, similar: 22 },
+                    { cmd: "spec_fp -t 508.namd_r", prob: 0.654, similar: 12 },
+                    { cmd: "stream -t triad -fpu_path", prob: 0.423, similar: 8 },
+                ],
+                explanation: "Bank 6 (FP) faults show strongest affinity with floating-point and FMA workloads. Linpack FPU-only mode is the highest-yield command historically."
+            },
+            "0": { // LS - Load-Store
+                commands: [
+                    { cmd: "membw -p sequential_read -s 8G", prob: 0.903, similar: 19 },
+                    { cmd: "stream -t copy -numa_local", prob: 0.847, similar: 16 },
+                    { cmd: "lmbench -t lat_mem_rd", prob: 0.756, similar: 13 },
+                    { cmd: "spec_cpu -t 519.lbm_r", prob: 0.612, similar: 10 },
+                    { cmd: "stressapptest -M 4096 -s 300", prob: 0.498, similar: 8 },
+                ],
+                explanation: "Bank 0 (LS) faults correlate with load-store unit pressure — especially sequential memory access patterns and NUMA-local transfers."
+            },
+            "1": { // IF - Instruction Fetch
+                commands: [
+                    { cmd: "coremark -t branch_heavy", prob: 0.887, similar: 14 },
+                    { cmd: "spec_cpu -t 500.perlbench_r", prob: 0.823, similar: 12 },
+                    { cmd: "prime95 -t small_fft -c single", prob: 0.698, similar: 9 },
+                    { cmd: "nginx_bench -t high_rps", prob: 0.534, similar: 7 },
+                    { cmd: "redis_bench -t pipeline_heavy", prob: 0.389, similar: 5 },
+                ],
+                explanation: "Bank 1 (IF) faults relate to instruction fetch and branch prediction failures. Heavy branching and instruction cache pressure commands are prioritized."
+            },
+            "2": { // CU - Combined Unit
+                commands: [
+                    { cmd: "prime95 -t blend -c all", prob: 0.934, similar: 26 },
+                    { cmd: "linpack -c all_cores -mixed", prob: 0.867, similar: 21 },
+                    { cmd: "stressapptest -M 8192 -s 600", prob: 0.789, similar: 17 },
+                    { cmd: "spec_cpu -t 525.x264_r", prob: 0.645, similar: 11 },
+                    { cmd: "handbrake -t 4k_encode", prob: 0.521, similar: 8 },
+                ],
+                explanation: "Bank 2 (CU) combined unit faults respond to mixed-mode workloads that exercise both integer and FP paths simultaneously."
+            }
+        };
+
+        function runPrediction() {
+            const btn = document.getElementById('predictBtn');
+            const resultsDiv = document.getElementById('results');
+            const loadingText = document.getElementById('loadingText');
+            const outputData = document.getElementById('outputData');
+            const bank = document.getElementById('bankInput').value;
+            const error = document.getElementById('errorInput').value;
+            const thermal = document.getElementById('thermalInput').value;
+            const boot = document.getElementById('bootInput').value;
+            const mce = document.getElementById('mceInput').value;
+
+            btn.disabled = true;
+            btn.innerText = "⏳ Analyzing...";
+            resultsDiv.style.display = "block";
+            loadingText.style.display = "block";
+            outputData.style.display = "none";
+
+            const data = predictionDB[bank] || predictionDB["10"];
+
+            // Vary probabilities slightly based on thermal/error severity
+            const thermalBoost = { "extreme": 0.03, "hot": 0.01, "warm": -0.02, "ambient": -0.05 };
+            const errorBoost = { "fatal": 0.04, "poison": 0.03, "uncorrectable": 0.01, "correctable": -0.05 };
+            const boost = (thermalBoost[thermal] || 0) + (errorBoost[error] || 0);
+
+            setTimeout(() => {
+                loadingText.style.display = "none";
+
+                let html = `<span style="color: #10b981;">[SUCCESS] Model v1.2.0 — ${data.commands.length} High-Probability Commands Identified</span>\n`;
+                html += `<span style="color: #94a3b8;">Symptoms: Bank ${bank} | MCE: ${mce} | ${error} | ${thermal} | ${boot}</span>\n\n`;
+
+                data.commands.forEach((c, i) => {
+                    const adjustedProb = Math.min(0.99, Math.max(0.10, c.prob + boost + (Math.random() * 0.02 - 0.01)));
+                    const pct = (adjustedProb * 100).toFixed(1);
+                    const bar = '█'.repeat(Math.round(adjustedProb * 20)) + '░'.repeat(20 - Math.round(adjustedProb * 20));
+                    html += `  <b>#${i + 1}</b>  <span style="color: ${adjustedProb > 0.7 ? '#10b981' : adjustedProb > 0.4 ? '#f59e0b' : '#94a3b8'};">${pct}%</span>  ${bar}  <code>${c.cmd}</code>  <span style="color:#94a3b8;">(${c.similar} similar cases)</span>\n`;
+                });
+
+                html += `\n<span style="color: #38bdf8;">ℹ SHAP Explanation:</span> ${data.explanation}\n`;
+                html += `<span style="color: #94a3b8;">⏱ Inference latency: ${(Math.random() * 200 + 80).toFixed(0)}ms | Retrieved ${(Math.random() * 20 + 30).toFixed(0)} similar CPUs from FAISS index</span>`;
+
+                outputData.innerHTML = html;
+                outputData.style.display = "block";
+                btn.innerText = "⚡ Run Another Analysis";
+                btn.disabled = false;
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
