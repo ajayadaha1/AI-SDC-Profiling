@@ -14,6 +14,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { formatDistanceToNow } from 'date-fns';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversations, useCreateConversation, useDeleteConversation } from '../../hooks/useConversations';
+import Logo from '../common/Logo';
 
 interface SidebarProps {
   width: number;
@@ -63,9 +64,12 @@ export default function Sidebar({ width }: SidebarProps) {
       }}
     >
       <Box sx={{ p: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, fontSize: '1rem' }}>
-          AI SDC Profiling
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+          <Logo size={36} />
+          <Typography variant="h6" sx={{ fontWeight: 700, fontSize: '1rem' }}>
+            AI Failure Profiling
+          </Typography>
+        </Box>
         <Button
           fullWidth
           variant="outlined"

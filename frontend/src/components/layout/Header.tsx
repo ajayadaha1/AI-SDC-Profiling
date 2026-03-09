@@ -1,6 +1,7 @@
 import { Box, IconButton, Typography } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useUIStore } from '../../stores/uiStore';
+import Logo from '../common/Logo';
 
 export default function Header() {
   const toggleSidebar = useUIStore((s) => s.toggleSidebar);
@@ -20,8 +21,9 @@ export default function Header() {
       <IconButton onClick={toggleSidebar} size="small" sx={{ mr: 1 }}>
         <MenuIcon />
       </IconButton>
-      <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-        SDC Debug Predictor
+      <Logo size={30} />
+      <Typography variant="subtitle1" sx={{ fontWeight: 600, ml: 1 }}>
+        Failure Debug Predictor
       </Typography>
     </Box>
   );

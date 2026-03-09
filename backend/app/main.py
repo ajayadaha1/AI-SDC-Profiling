@@ -21,7 +21,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="AI SDC Profiling API",
+    title="AI Failure Profiling API",
     description="LLM-in-the-Loop Predictive Debug System for AFHC/ANC",
     version="0.1.0",
     lifespan=lifespan,

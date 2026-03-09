@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI SDC Profiling — Presentation</title>
+    <title>AI Failure Profiling — Presentation</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
@@ -522,7 +522,7 @@
     <!-- ============================= SLIDE 2: PROBLEM ============================= -->
     <div class="slide" data-slide="1">
         <span class="slide-number">Problem Statement</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>Why This Matters</h2>
         <p class="subtitle mb-1">When a failing CPU hits the bench, engineers guess which commands to run.</p>
@@ -555,7 +555,7 @@
     <!-- ============================= SLIDE 3: CORE QUESTION ============================= -->
     <div class="slide" data-slide="2">
         <span class="slide-number">The Core Question</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>What Are We Solving?</h2>
         <div class="divider"></div>
@@ -581,7 +581,7 @@
     <!-- ============================= SLIDE 4: DATA ============================= -->
     <div class="slide" data-slide="3">
         <span class="slide-number">Data Landscape</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>What We Have in Snowflake</h2>
         <p class="subtitle mb-1">Each record = <strong>(CPU, Symptom, Command, Outcome)</strong> — the raw material for supervised learning.</p>
@@ -624,7 +624,7 @@
     <!-- ============================= SLIDE 5: ARCHITECTURE ============================= -->
     <div class="slide" data-slide="4">
         <span class="slide-number">System Architecture</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>End-to-End Pipeline</h2>
         <div class="divider"></div>
@@ -672,7 +672,7 @@
     <!-- ============================= SLIDE 6: FEATURE ENGINEERING ============================= -->
     <div class="slide" data-slide="5">
         <span class="slide-number">Feature Engineering</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>Encoding Hardware Symptoms</h2>
         <p class="subtitle mb-1">Multi-modal encoding: structured hardware context → unified numerical vector (~200-500 dims)</p>
@@ -718,7 +718,7 @@
     <!-- ============================= SLIDE 7: MODEL ============================= -->
     <div class="slide" data-slide="6">
         <span class="slide-number">Predictive Model</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>Two-Stage Ranking Architecture</h2>
         <div class="divider"></div>
@@ -764,7 +764,7 @@
     <!-- ============================= SLIDE 8: TRAINING & EVALUATION ============================= -->
     <div class="slide" data-slide="7">
         <span class="slide-number">Training &amp; Evaluation</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>How We Train &amp; Measure</h2>
         <div class="divider"></div>
@@ -805,7 +805,7 @@
     <!-- ============================= SLIDE 9: INFERENCE ============================= -->
     <div class="slide" data-slide="8">
         <span class="slide-number">Inference</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>How Prediction Works (< 500ms)</h2>
         <div class="divider"></div>
@@ -858,7 +858,7 @@ Final:                   <span style="color:var(--green);">0.942</span>
     <!-- ============================= SLIDE 10: INTEGRATION ============================= -->
     <div class="slide" data-slide="9">
         <span class="slide-number">Integration</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>AFHC/ANC Framework Integration</h2>
         <p class="subtitle">Three integration surfaces — meet engineers where they already work.</p>
@@ -908,7 +908,7 @@ $ afhc-run --priority-list "stream,mprime"
     <!-- ============================= SLIDE 11: FEEDBACK LOOP ============================= -->
     <div class="slide" data-slide="10">
         <span class="slide-number">Continuous Learning</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>Self-Improving Feedback Loop</h2>
         <p class="subtitle">Every prediction tested generates new labeled data → model gets smarter over time.</p>
@@ -950,7 +950,7 @@ $ afhc-run --priority-list "stream,mprime"
     <!-- ============================= SLIDE 12: ROADMAP ============================= -->
     <div class="slide" data-slide="11">
         <span class="slide-number">Roadmap</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>Implementation Timeline</h2>
         <div class="divider"></div>
@@ -1010,7 +1010,7 @@ $ afhc-run --priority-list "stream,mprime"
     <!-- ============================= SLIDE 13: RISKS ============================= -->
     <div class="slide" data-slide="12">
         <span class="slide-number">Risk Mitigation</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>Risks &amp; Mitigations</h2>
         <div class="divider"></div>
@@ -1050,7 +1050,7 @@ $ afhc-run --priority-list "stream,mprime"
     <!-- ============================= SLIDE 14: TECH STACK ============================= -->
     <div class="slide" data-slide="13">
         <span class="slide-number">Technology</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h2>Tech Stack</h2>
         <div class="divider"></div>
@@ -1103,7 +1103,7 @@ $ afhc-run --priority-list "stream,mprime"
         <div class="glow-circle" style="width:350px;height:350px;background:var(--accent2);top:-100px;left:-50px;"></div>
 
         <span class="slide-number">Summary</span>
-        <span class="brand">AI SDC Profiling</span>
+        <span class="brand">AI Failure Profiling</span>
 
         <h1 style="font-size:3rem;">
             From <span style="color:var(--red);">Reactive</span> to <span class="accent">Predictive</span>
@@ -1142,7 +1142,7 @@ $ afhc-run --priority-list "stream,mprime"
         </div>
 
         <p style="color:var(--text3); font-size:1rem; margin-top:3rem;">
-            ⚡ <strong style="color:var(--text);">AI SDC Profiling</strong> &nbsp;—&nbsp; DFX Innovation Days 2026
+            ⚡ <strong style="color:var(--text);">AI Failure Profiling</strong> &nbsp;—&nbsp; DFX Innovation Days 2026
         </p>
     </div>
 

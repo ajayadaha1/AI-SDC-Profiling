@@ -52,6 +52,8 @@ async def _pipeline_sse_generator(
     # Run the pipeline, forwarding SSE events
     assistant_text = None
     prediction_data = None
+    parsing_data = None
+    search_data = None
 
     async for sse_event in run_pipeline(text, conversation_id, image_files):
         yield sse_event
@@ -62,6 +64,18 @@ async def _pipeline_sse_generator(
                 data_line = sse_event.split("data: ", 1)[1].strip()
                 parsed = json.loads(data_line)
                 assistant_text = parsed.get("message", "")
+            except (IndexError, json.JSONDecodeError):
+                pass
+        elif sse_event.startswith("event: parsing_complete\n"):
+            try:
+                data_line = sse_event.split("data: ", 1)[1].strip()
+                parsing_data = json.loads(data_line)
+            except (IndexError, json.JSONDecodeError):
+                pass
+        elif sse_event.startswith("event: search_complete\n"):
+            try:
+                data_line = sse_event.split("data: ", 1)[1].strip()
+                search_data = json.loads(data_line)
             except (IndexError, json.JSONDecodeError):
                 pass
         elif sse_event.startswith("event: prediction\n"):
@@ -83,11 +97,17 @@ async def _pipeline_sse_generator(
         session.add(assistant_msg)
         await session.commit()
     elif prediction_data:
+        # Embed thinking data alongside prediction for reload persistence
+        structured = dict(prediction_data)
+        if parsing_data:
+            structured["_thinking_parsed_profile"] = parsing_data
+        if search_data:
+            structured["_thinking_search_result"] = search_data
         assistant_msg = Message(
             conversation_id=conversation_id,
             role="assistant",
             content_text=None,
-            content_structured=json.dumps(prediction_data),
+            content_structured=json.dumps(structured),
             message_type="prediction",
         )
         session.add(assistant_msg)

@@ -19,7 +19,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <BrowserRouter basename="/ai-sdc-profiling">
+        <BrowserRouter basename="/ai-failure-profiling">
           <Routes>
             <Route element={<AppLayout />}>
               <Route path="/" element={<ChatPage />} />

@@ -23,7 +23,7 @@ class AIClient:
             timeout=settings.LLM_TIMEOUT,
             default_headers={
                 "Ocp-Apim-Subscription-Key": settings.LLM_API_KEY,
-                "user": os.getenv("USER", os.getenv("USERNAME", "ai-sdc-profiling")),
+                "user": os.getenv("USER", os.getenv("USERNAME", "ai-failure-profiling")),
             },
         )
         self.model = settings.LLM_MODEL

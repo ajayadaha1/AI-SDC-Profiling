@@ -14,7 +14,7 @@ export async function sendChatMessage(
   images.forEach((img) => formData.append('images', img));
 
   try {
-    const response = await fetch('/ai-sdc-profiling-api/api/chat', {
+    const response = await fetch('/ai-failure-profiling-api/api/chat', {
       method: 'POST',
       body: formData,
       headers: {

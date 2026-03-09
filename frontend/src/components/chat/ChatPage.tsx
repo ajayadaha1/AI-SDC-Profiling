@@ -4,6 +4,7 @@ import Header from '../layout/Header';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
 import ThinkingProcess from './ThinkingProcess';
+import Logo from '../common/Logo';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationMessages } from '../../hooks/useConversations';
 
@@ -58,8 +59,9 @@ export default function ChatPage() {
               gap: 2,
             }}
           >
+            <Logo size={96} />
             <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-              AI SDC Profiling
+              AI Failure Profiling
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 500, textAlign: 'center' }}>
               Describe CPU failure symptoms or upload MCE screenshots to get ranked AFHC/ANC debug command predictions.

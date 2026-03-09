@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True)
 
-    APP_NAME: str = "AI SDC Profiling"
+    APP_NAME: str = "AI Failure Profiling"
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
     # Database

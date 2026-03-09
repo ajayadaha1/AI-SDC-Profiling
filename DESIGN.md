@@ -1,4 +1,4 @@
-# AI SDC Profiling — First Pass Design Document
+# AI Failure Profiling — First Pass Design Document
 
 ## LLM-in-the-Loop Predictive Debug System for AFHC/ANC
 
