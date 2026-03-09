@@ -5,6 +5,7 @@ Handles both conversational input (greetings, questions) and real symptom descri
 
 import json
 import logging
+from collections import Counter
 from typing import AsyncGenerator, Any
 
 from app.services.ai_client import get_ai_client
@@ -12,6 +13,7 @@ from app.services.llm_parser import parse_symptoms
 from app.services.command_aggregator import (
     query_snowflake_for_commands,
     summarize_multi_source_results,
+    format_command_table,
 )
 from app.services.llm_ranker import rank_commands
 
@@ -115,10 +117,11 @@ async def run_pipeline(
     failure_type = parsed_profile.get("failure_type", "UNKNOWN")
     mca_bank = parsed_profile.get("mce_bank")
     mca_bank_name = str(mca_bank) if mca_bank is not None else None
+    raw_defect_type = parsed_profile.get("raw_defect_type")
 
     try:
         raw_results, tier, tier_description = query_snowflake_for_commands(
-            failure_type, mca_bank_name
+            failure_type, mca_bank_name, raw_defect_type
         )
         command_summary = summarize_multi_source_results(raw_results)
     except Exception as e:
@@ -135,7 +138,25 @@ async def run_pipeline(
             "count": cmd["total_fails"],
             "rate": round(cmd["fail_rate"] * 100, 1),
             "sources": len(cmd["sources"]) if isinstance(cmd["sources"], set) else cmd["sources"],
+            "source_names": sorted(cmd["sources"]) if isinstance(cmd["sources"], set) else [],
+            "details": cmd.get("details", []),
+            "unique_cpus": cmd.get("unique_cpus", 0),
+            "banks": sorted(cmd["banks"]) if isinstance(cmd.get("banks"), set) else [],
         })
+
+    # Build per-source summary
+    source_counts: Counter[str] = Counter()
+    source_tools: dict[str, set] = {}
+    for row in raw_results:
+        src = row["source"]
+        source_counts[src] += row["count"]
+        source_tools.setdefault(src, set()).add(row["tool"])
+
+    per_source_summary = [
+        {"source": src, "record_count": source_counts[src],
+         "tool_count": len(source_tools.get(src, set()))}
+        for src in sorted(source_counts.keys())
+    ]
 
     yield _format_sse("search_complete", {
         "tier": tier,
@@ -144,6 +165,9 @@ async def run_pipeline(
         "num_commands": len(command_summary["commands"]),
         "sources": command_summary["sources"],
         "tool_distribution": tool_distribution,
+        "per_source_summary": per_source_summary,
+        "sample_records": raw_results[:10],
+        "formatted_command_table": format_command_table(command_summary),
     })
 
     # --- Stage 3: Rank commands ---

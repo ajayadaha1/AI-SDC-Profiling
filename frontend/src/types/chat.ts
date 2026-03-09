@@ -29,10 +29,17 @@ export interface ParsedProfile {
   failure_type: string;
   mce_bank: number | null;
   mce_code: string | null;
+  mce_code_family: string | null;
   error_severity: string | null;
   thermal_state: string | null;
+  voltage_state: string | null;
   boot_stage: string | null;
+  frequency_context: string | null;
+  failing_cores: string | null;
+  raw_defect_type: string | null;
+  keywords: string[];
   confidence: number;
+  reasoning: string;
 }
 
 export interface RankedCommand {
@@ -84,7 +91,26 @@ export interface SearchCompleteData {
     count: number;
     rate: number;
     sources: number;
+    source_names: string[];
+    details: string[];
+    unique_cpus: number;
+    banks: string[];
   }>;
+  per_source_summary: Array<{
+    source: string;
+    record_count: number;
+    tool_count: number;
+  }>;
+  sample_records: Array<{
+    source: string;
+    tool: string;
+    count: number;
+    bank?: string;
+    unique_cpus?: number;
+    defect_type?: string;
+    uc_flag?: string;
+  }>;
+  formatted_command_table: string;
 }
 
 export type PipelineStage =
