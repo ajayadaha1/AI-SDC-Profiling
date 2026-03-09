@@ -127,11 +127,23 @@ async def run_pipeline(
         yield _format_sse("done", {})
         return
 
+    # Build tool distribution for the thinking panel
+    tool_distribution = []
+    for cmd in command_summary["commands"][:8]:
+        tool_distribution.append({
+            "tool": cmd["command"],
+            "count": cmd["total_fails"],
+            "rate": round(cmd["fail_rate"] * 100, 1),
+            "sources": len(cmd["sources"]) if isinstance(cmd["sources"], set) else cmd["sources"],
+        })
+
     yield _format_sse("search_complete", {
         "tier": tier,
+        "tier_description": tier_description,
         "count": command_summary["total_records"],
         "num_commands": len(command_summary["commands"]),
         "sources": command_summary["sources"],
+        "tool_distribution": tool_distribution,
     })
 
     # --- Stage 3: Rank commands ---

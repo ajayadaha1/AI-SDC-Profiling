@@ -3,12 +3,20 @@ import { Box, Typography } from '@mui/material';
 import Header from '../layout/Header';
 import MessageList from './MessageList';
 import ChatInput from './ChatInput';
-import StreamingIndicator from './StreamingIndicator';
+import ThinkingProcess from './ThinkingProcess';
 import { useChatStore } from '../../stores/chatStore';
 import { useConversationMessages } from '../../hooks/useConversations';
 
 export default function ChatPage() {
-  const { activeConversationId, messages, setMessages, isStreaming, pipelineStage } = useChatStore();
+  const {
+    activeConversationId,
+    messages,
+    setMessages,
+    isStreaming,
+    thinkingSteps,
+    parsedProfile,
+    searchResult,
+  } = useChatStore();
   const { data: convDetail } = useConversationMessages(activeConversationId);
 
   // Track which conversation we last loaded from server.
@@ -63,7 +71,14 @@ export default function ChatPage() {
         ) : (
           <>
             <MessageList messages={messages} />
-            {isStreaming && <StreamingIndicator stage={pipelineStage} />}
+            {thinkingSteps.length > 0 && (
+              <ThinkingProcess
+                steps={thinkingSteps}
+                isStreaming={isStreaming}
+                parsedProfile={parsedProfile}
+                searchResult={searchResult}
+              />
+            )}
           </>
         )}
       </Box>

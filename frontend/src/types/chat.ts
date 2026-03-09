@@ -63,6 +63,30 @@ export interface SSEEvent {
   data: Record<string, unknown>;
 }
 
+export interface ThinkingStep {
+  id: string;
+  stage: PipelineStage;
+  label: string;
+  detail?: string;
+  status: 'running' | 'done' | 'error';
+  timestamp: number;
+  data?: Record<string, unknown>;
+}
+
+export interface SearchCompleteData {
+  tier: number;
+  tier_description: string;
+  count: number;
+  num_commands: number;
+  sources: string[];
+  tool_distribution: Array<{
+    tool: string;
+    count: number;
+    rate: number;
+    sources: number;
+  }>;
+}
+
 export type PipelineStage =
   | 'idle'
   | 'conversational'

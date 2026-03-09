@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ConversationSummary, Message, PipelineStage, PredictionData, ParsedProfile } from '../types/chat';
+import type { ConversationSummary, Message, PipelineStage, PredictionData, ParsedProfile, ThinkingStep, SearchCompleteData } from '../types/chat';
 
 interface ChatState {
   // Conversations
@@ -19,13 +19,16 @@ interface ChatState {
   isStreaming: boolean;
   pipelineStage: PipelineStage;
   parsedProfile: ParsedProfile | null;
-  searchResult: { tier: number; count: number } | null;
+  searchResult: SearchCompleteData | null;
   currentPrediction: PredictionData | null;
+  thinkingSteps: ThinkingStep[];
   setStreaming: (streaming: boolean) => void;
   setPipelineStage: (stage: PipelineStage) => void;
   setParsedProfile: (profile: ParsedProfile | null) => void;
-  setSearchResult: (result: { tier: number; count: number } | null) => void;
+  setSearchResult: (result: SearchCompleteData | null) => void;
   setCurrentPrediction: (prediction: PredictionData | null) => void;
+  addThinkingStep: (step: ThinkingStep) => void;
+  updateThinkingStep: (id: string, updates: Partial<ThinkingStep>) => void;
 
   // Pending images
   pendingImages: File[];
@@ -59,11 +62,20 @@ export const useChatStore = create<ChatState>((set) => ({
   parsedProfile: null,
   searchResult: null,
   currentPrediction: null,
+  thinkingSteps: [],
   setStreaming: (streaming) => set({ isStreaming: streaming }),
   setPipelineStage: (stage) => set({ pipelineStage: stage }),
   setParsedProfile: (profile) => set({ parsedProfile: profile }),
   setSearchResult: (result) => set({ searchResult: result }),
   setCurrentPrediction: (prediction) => set({ currentPrediction: prediction }),
+  addThinkingStep: (step) =>
+    set((state) => ({ thinkingSteps: [...state.thinkingSteps, step] })),
+  updateThinkingStep: (id, updates) =>
+    set((state) => ({
+      thinkingSteps: state.thinkingSteps.map((s) =>
+        s.id === id ? { ...s, ...updates } : s
+      ),
+    })),
 
   pendingImages: [],
   addPendingImage: (file) =>
@@ -81,5 +93,6 @@ export const useChatStore = create<ChatState>((set) => ({
       parsedProfile: null,
       searchResult: null,
       currentPrediction: null,
+      thinkingSteps: [],
     }),
 }));
