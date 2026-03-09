@@ -20,6 +20,7 @@ PROFILE_FIELDS = {
     "boot_stage": None,
     "frequency_context": None,
     "failing_cores": None,
+    "raw_defect_type": None,
     "keywords": [],
     "confidence": 0.0,
     "reasoning": "",

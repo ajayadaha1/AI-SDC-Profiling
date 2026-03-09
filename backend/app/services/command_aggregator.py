@@ -8,6 +8,7 @@ Queries 4 data sources with tiered matching:
 """
 
 import logging
+import re
 from typing import Any
 
 from app.services.snowflake_service import execute_query
@@ -37,7 +38,7 @@ MCEFAIL_BANK_MAP: dict[str, list[str]] = {
 # We use LIKE matching against the stringified array
 L3DEBUG_BANK_PATTERNS: dict[str, list[str]] = {
     "UMC_MEMORY_CONTROLLER": ["%UMC%"],
-    "LOAD_STORE": ["%LS%"],
+    "LOAD_STORE": ["%LS%", "%'0'%"],
     "L3_CACHE": ["%L3%"],
     "L2_CACHE": ["%L2%"],
     "EXECUTION_UNIT": ["%EX%"],
@@ -82,6 +83,32 @@ def _tool_case(col: str) -> str:
         WHEN {col} LIKE '%crest_emulator%' THEN 'crest_emulator'
         ELSE 'other'
     END"""
+
+
+# ---------------------------------------------------------------------------
+# Raw defect-type helpers
+# ---------------------------------------------------------------------------
+
+_SAFE_DEFECT_TYPE_RE = re.compile(r"^[A-Za-z0-9 _\-/\.#+()]+$")
+_MCE_BANK_RE = re.compile(r"MCE\s+(?:Bank\s+)?(\d+)", re.IGNORECASE)
+
+
+def _sanitize_defect_type(value: str) -> str | None:
+    """Allow only safe characters for SQL interpolation; reject anything suspicious."""
+    cleaned = value.strip()
+    if not cleaned or len(cleaned) > 100:
+        return None
+    if not _SAFE_DEFECT_TYPE_RE.match(cleaned):
+        return None
+    return cleaned.replace("'", "''")
+
+
+def _extract_bank_from_defect_type(raw_defect_type: str | None) -> str | None:
+    """Extract numeric bank ID from defect types like 'MCE Bank 17'."""
+    if not raw_defect_type:
+        return None
+    m = _MCE_BANK_RE.search(raw_defect_type)
+    return m.group(1) if m else None
 
 
 # ---------------------------------------------------------------------------
@@ -165,9 +192,16 @@ def _query_l3debug_logfiles(failure_type: str) -> list[dict]:
         return []
 
 
-def _query_aura_prism(failure_type: str) -> list[dict]:
+def _query_aura_prism(failure_type: str, raw_defect_type: str | None = None) -> list[dict]:
     """Query AURA_PMDATA and PRISM_PMDATA for command distribution by defect type."""
-    defect_types = DEFECT_TYPE_MAP.get(failure_type, [])
+    defect_types = list(DEFECT_TYPE_MAP.get(failure_type, []))
+
+    # If the input had an explicit defect type, add it to the query
+    if raw_defect_type:
+        sanitized = _sanitize_defect_type(raw_defect_type)
+        if sanitized and sanitized not in defect_types:
+            defect_types.append(sanitized)
+
     if not defect_types:
         return []
 
@@ -211,6 +245,7 @@ def _query_aura_prism(failure_type: str) -> list[dict]:
 def query_snowflake_for_commands(
     failure_type: str,
     mca_bank_name: str | None = None,
+    raw_defect_type: str | None = None,
 ) -> tuple[list[dict], int, str]:
     """
     Query all Snowflake sources for command data matching a failure type.
@@ -220,6 +255,12 @@ def query_snowflake_for_commands(
     All tiers are always queried (they're complementary data sources, not fallbacks).
     The 'tier' number reflects how many sources returned data.
     """
+    # If no explicit bank was parsed but the raw defect type encodes one, use it
+    if mca_bank_name is None and raw_defect_type:
+        extracted = _extract_bank_from_defect_type(raw_defect_type)
+        if extracted:
+            mca_bank_name = extracted
+
     all_results: list[dict] = []
     tier = 0
     tier_desc_parts = []
@@ -243,7 +284,7 @@ def query_snowflake_for_commands(
         logger.info("L3DEBUG: %d groups, %d total", len(l3_results), l3_total)
 
     # Source 3: AURA/PRISM lab data
-    aura_prism_results = _query_aura_prism(failure_type)
+    aura_prism_results = _query_aura_prism(failure_type, raw_defect_type)
     if aura_prism_results:
         all_results.extend(aura_prism_results)
         ap_total = sum(r["count"] for r in aura_prism_results)

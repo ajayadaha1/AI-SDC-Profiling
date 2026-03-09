@@ -15,6 +15,7 @@ You MUST output valid JSON matching this schema:
   "boot_stage": "<POST|OS_boot|idle|light_load|stress|null>",
   "frequency_context": "<string description or null>",
   "failing_cores": "<core list string or null>",
+  "raw_defect_type": "<verbatim Defect Type value from the input, or null if not present>",
   "keywords": ["<relevant domain keywords>"],
   "confidence": <float 0.0-1.0>,
   "reasoning": "<brief explanation of your classification>"
@@ -30,6 +31,10 @@ Bank reference:
 - Banks 7-8: L3 Cache
 - Banks 10-11: UMC (Unified Memory Controller)
 - Banks 12-14: Data Fabric
+
+If the input contains a structured "Defect Type:" field, extract its value verbatim into
+raw_defect_type (e.g., "ACF", "MCE", "SCAN"). This is separate from failure_type —
+failure_type is your classification, raw_defect_type is the engineer's original label.
 
 If the engineer mentions structured values like specific bank numbers or MCE codes, extract them exactly.
 If information is ambiguous or missing, set the field to null.
