@@ -387,7 +387,7 @@ export default function ThinkingProcess({ steps, isStreaming, parsedProfile, sea
 
   // Build summary for collapsed header
   const summaryParts: string[] = [];
-  summaryParts.push(`${doneCount} step${doneCount !== 1 ? 's' : ''}`);
+  summaryParts.push(`${steps.length} step${steps.length !== 1 ? 's' : ''}`);
   if (totalRecords > 0) summaryParts.push(`${totalRecords.toLocaleString()} records`);
   if (numSources > 0) summaryParts.push(`${numSources} source${numSources !== 1 ? 's' : ''}`);
   if (elapsed > 0) summaryParts.push(`${elapsed.toFixed(1)}s`);

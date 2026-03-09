@@ -5,16 +5,12 @@ import CommandTable from '../predictions/CommandTable';
 import CaveatsBox from '../predictions/CaveatsBox';
 import AnalysisSummary from '../predictions/AnalysisSummary';
 import ThinkingProcess from './ThinkingProcess';
+import { useChatStore } from '../../stores/chatStore';
 
 interface AssistantMessageProps {
   message: Message;
 }
 
-/**
- * Reconstruct thinking steps + data from a persisted prediction message.
- * The backend embeds _thinking_parsed_profile and _thinking_search_result
- * inside content_structured so thinking survives page reloads.
- */
 function extractThinkingFromPrediction(prediction: PredictionData & {
   _thinking_parsed_profile?: ParsedProfile;
   _thinking_search_result?: SearchCompleteData;
@@ -26,7 +22,6 @@ function extractThinkingFromPrediction(prediction: PredictionData & {
   const parsedProfile = prediction._thinking_parsed_profile ?? null;
   const searchResult = prediction._thinking_search_result ?? null;
 
-  // If no thinking data was saved, try to reconstruct minimal steps from the prediction itself
   const steps: ThinkingStep[] = [];
 
   if (parsedProfile || prediction.analysis?.parsed_profile) {
@@ -75,6 +70,8 @@ function extractThinkingFromPrediction(prediction: PredictionData & {
 }
 
 export default function AssistantMessage({ message }: AssistantMessageProps) {
+  const thinkingSteps = useChatStore((s) => s.thinkingSteps);
+
   const renderContent = () => {
     if (message.message_type === 'error') {
       return (
@@ -92,11 +89,14 @@ export default function AssistantMessage({ message }: AssistantMessageProps) {
         return <Typography color="error">Failed to parse prediction data.</Typography>;
       }
 
-      const thinking = extractThinkingFromPrediction(prediction);
+      // Only show the inline ThinkingProcess when the top-level one (ChatPage)
+      // is not already visible — i.e. on page reload when the store is empty.
+      const showThinking = thinkingSteps.length === 0;
+      const thinking = showThinking ? extractThinkingFromPrediction(prediction) : null;
 
       return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {thinking.steps.length > 0 && (
+          {thinking && thinking.steps.length > 0 && (
             <ThinkingProcess
               steps={thinking.steps}
               isStreaming={false}
