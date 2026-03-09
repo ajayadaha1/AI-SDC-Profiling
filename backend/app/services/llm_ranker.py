@@ -69,7 +69,7 @@ async def rank_commands(
     from app.services.command_aggregator import format_command_table
     table_str = format_command_table(command_summary)
 
-    num_parts = command_summary.get("total_similar_parts", 0)
+    num_parts = command_summary.get("total_records", 0)
 
     messages = [
         {"role": "system", "content": RANKING_SYSTEM_PROMPT},

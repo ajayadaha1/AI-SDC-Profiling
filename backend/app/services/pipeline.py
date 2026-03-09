@@ -10,8 +10,8 @@ from typing import AsyncGenerator, Any
 from app.services.ai_client import get_ai_client
 from app.services.llm_parser import parse_symptoms
 from app.services.command_aggregator import (
-    summarize_command_results,
-    get_mock_query_results,
+    query_snowflake_for_commands,
+    summarize_multi_source_results,
 )
 from app.services.llm_ranker import rank_commands
 
@@ -109,25 +109,29 @@ async def run_pipeline(
 
     yield _format_sse("parsing_complete", parsed_profile)
 
-    # --- Stage 2: Search for similar parts ---
-    yield _format_sse("search_started", {"status": "Searching for similar failed parts..."})
+    # --- Stage 2: Search Snowflake for similar parts ---
+    yield _format_sse("search_started", {"status": "Querying Snowflake for historical command data..."})
 
     failure_type = parsed_profile.get("failure_type", "UNKNOWN")
+    mca_bank = parsed_profile.get("mce_bank")
+    mca_bank_name = str(mca_bank) if mca_bank is not None else None
 
-    # TODO: Replace with real Snowflake queries when connected
     try:
-        query_results, tier, tier_description = get_mock_query_results(failure_type)
-        command_summary = summarize_command_results(query_results)
+        raw_results, tier, tier_description = query_snowflake_for_commands(
+            failure_type, mca_bank_name
+        )
+        command_summary = summarize_multi_source_results(raw_results)
     except Exception as e:
-        logger.error("Search/aggregation failed: %s", e)
-        yield _format_sse("error", {"message": f"Failed to search similar parts: {e}"})
+        logger.error("Snowflake query/aggregation failed: %s", e)
+        yield _format_sse("error", {"message": f"Failed to query Snowflake: {e}"})
         yield _format_sse("done", {})
         return
 
     yield _format_sse("search_complete", {
         "tier": tier,
-        "count": command_summary["total_similar_parts"],
+        "count": command_summary["total_records"],
         "num_commands": len(command_summary["commands"]),
+        "sources": command_summary["sources"],
     })
 
     # --- Stage 3: Rank commands ---
@@ -151,7 +155,7 @@ async def run_pipeline(
         "analysis": {
             "parsed_profile": parsed_profile,
             "match_tier": tier,
-            "similar_parts_count": command_summary["total_similar_parts"],
+            "similar_parts_count": command_summary["total_records"],
             **ranking["analysis"],
         },
         "commands": ranking["recommendations"],
