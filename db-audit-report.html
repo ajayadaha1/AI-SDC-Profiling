@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Snowflake Database Audit — AI Failure Profiling</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232734;
+    --border: #2e3345;
+    --text: #e1e4ed;
+    --text2: #8b90a0;
+    --accent: #6c8cff;
+    --accent2: #4fc3f7;
+    --green: #66bb6a;
+    --orange: #ffa726;
+    --red: #ef5350;
+    --purple: #ab47bc;
+    --teal: #26a69a;
+    --yellow: #ffee58;
+    --pink: #ec407a;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 0;
+  }
+  .hero {
+    background: linear-gradient(135deg, #1a1d27 0%, #1e2a4a 50%, #1a1d27 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 48px 32px 40px;
+    text-align: center;
+  }
+  .hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+  .hero .subtitle { color: var(--text2); font-size: 14px; }
+  .hero .meta {
+    display: flex; gap: 24px; justify-content: center; margin-top: 20px; flex-wrap: wrap;
+  }
+  .hero .meta-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 20px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .hero .meta-item .value { font-size: 24px; font-weight: 700; color: var(--accent); }
+  .hero .meta-item .label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .container { max-width: 1280px; margin: 0 auto; padding: 32px 24px; }
+
+  .section { margin-bottom: 40px; }
+  .section-title {
+    font-size: 18px; font-weight: 600; margin-bottom: 16px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .icon { font-size: 20px; }
+
+  /* Summary cards */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 16px; margin-bottom: 32px;
+  }
+  .summary-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .summary-card h3 { font-size: 13px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .summary-card .big-num { font-size: 32px; font-weight: 700; }
+  .summary-card .desc { font-size: 13px; color: var(--text2); margin-top: 4px; }
+
+  /* Tables */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--surface);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+  }
+  .data-table thead th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text2);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0;
+  }
+  .data-table tbody td {
+    padding: 9px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover { background: rgba(108, 140, 255, 0.04); }
+
+  /* Tags / badges */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .tag-yes { background: rgba(102, 187, 106, 0.15); color: var(--green); }
+  .tag-no { background: rgba(139, 144, 160, 0.12); color: var(--text2); }
+  .tag-accent { background: rgba(108, 140, 255, 0.15); color: var(--accent); }
+  .tag-orange { background: rgba(255, 167, 38, 0.15); color: var(--orange); }
+  .tag-red { background: rgba(239, 83, 80, 0.15); color: var(--red); }
+  .tag-purple { background: rgba(171, 71, 188, 0.15); color: var(--purple); }
+  .tag-teal { background: rgba(38, 166, 154, 0.15); color: var(--teal); }
+
+  .mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px; }
+
+  /* Bar chart */
+  .bar-chart { display: flex; flex-direction: column; gap: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { width: 180px; font-size: 12px; text-align: right; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bar-track { flex: 1; height: 22px; background: var(--surface2); border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; min-width: 2px; transition: width 0.8s ease; }
+  .bar-value { width: 90px; font-size: 12px; text-align: right; flex-shrink: 0; color: var(--text2); }
+
+  /* Horizontal split */
+  .split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .split { grid-template-columns: 1fr; } }
+
+  /* Callout */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 24px;
+  }
+  .callout.info { border-left-color: var(--accent); }
+  .callout.warn { border-left-color: var(--orange); }
+  .callout h4 { font-size: 14px; margin-bottom: 6px; }
+  .callout p { font-size: 13px; color: var(--text2); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px; overflow-x: auto; }
+  .tab-btn {
+    background: none; border: none; color: var(--text2); padding: 10px 18px;
+    font-size: 13px; cursor: pointer; border-bottom: 2px solid transparent;
+    white-space: nowrap; transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Scroll wrapper */
+  .scroll-x { overflow-x: auto; }
+
+  /* Sample rows */
+  .sample-grid { display: grid; gap: 12px; }
+  .sample-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+  }
+  .sample-card .row-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .sample-card .kv { display: grid; grid-template-columns: 160px 1fr; gap: 2px 12px; }
+  .sample-card .kv .k { color: var(--text2); }
+  .sample-card .kv .v { color: var(--text); word-break: break-all; }
+  .sample-card .kv .v.null { color: #555; font-style: italic; }
+
+  /* Donut */
+  .donut-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; justify-content: center; }
+  .donut-legend { display: flex; flex-direction: column; gap: 4px; }
+  .donut-legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .donut-legend-item .swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+
+  /* Flow diagram */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: wrap; justify-content: center; margin: 20px 0; }
+  .flow-step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 18px;
+    text-align: center;
+    min-width: 140px;
+  }
+  .flow-step .step-num { font-size: 11px; color: var(--accent); font-weight: 600; }
+  .flow-step .step-label { font-size: 13px; margin-top: 2px; }
+  .flow-arrow { color: var(--text2); font-size: 20px; padding: 0 4px; }
+
+  .highlight { color: var(--accent); font-weight: 600; }
+  .text-red { color: var(--red); }
+  .text-green { color: var(--green); }
+  .text-orange { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Snowflake Database Audit Report</h1>
+  <div class="subtitle">MFG_PROD.DATACENTER_HEALTH &mdash; AI Failure Profiling Data Coverage Analysis</div>
+  <div class="meta">
+    <div class="meta-item"><div class="value">26</div><div class="label">Total Tables</div></div>
+    <div class="meta-item"><div class="value text-red">4</div><div class="label">Queried by Profiler</div></div>
+    <div class="meta-item"><div class="value">~1.9B</div><div class="label">Untapped Rows</div></div>
+    <div class="meta-item"><div class="value text-green">12</div><div class="label">Failure Types Supported</div></div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Pipeline Flow -->
+  <div class="section">
+    <div class="section-title">Current Profiler Pipeline</div>
+    <div class="flow">
+      <div class="flow-step"><div class="step-num">Step 1</div><div class="step-label">LLM parses symptoms</div></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step"><div class="step-num">Step 2</div><div class="step-label">Query 4 Snowflake tables</div></div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step"><div class="step-num">Step 3</div><div class="step-label">LLM ranks commands</div></div>
+    </div>
+    <div class="callout info">
+      <h4>Key Finding: The profiler queries only 4 of 26 available tables</h4>
+      <p>The profiler currently uses <code>MSFT_MCEFAIL</code>, <code>LEVEL3DEBUG_LOGFILES</code>, <code>AURA_PMDATA</code>, and <code>PRISM_PMDATA</code>.
+        This misses ~1.9 billion rows of potentially valuable data including production MCE logs, command pass/fail history,
+        part lifecycle data, and SDC detection events. Additionally, ACF (Accuracy Check Failure) rows in LEVEL3DEBUG
+        use <code>ACF_FAIL_CORE_IDS</code> arrays instead of <code>MCA_BANK</code>, requiring different query logic.</p>
+    </div>
+  </div>
+
+  <!-- Coverage overview -->
+  <div class="section">
+    <div class="section-title">Table Coverage Overview</div>
+    <div class="scroll-x">
+      <table class="data-table" id="coverage-table">
+        <thead>
+          <tr>
+            <th>Table</th>
+            <th>Rows</th>
+            <th>Used</th>
+            <th>Category</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Query behavior analysis -->
+  <div class="section">
+    <div class="section-title">Query Behavior by Data Source</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px;">
+      The profiler maps symptoms to failure types (UMC, LS, L3, FP, etc.) and queries each source with type-specific filters. Here's an example for <code>FLOATING_POINT</code> failures:
+    </p>
+    <div class="scroll-x">
+      <table class="data-table">
+        <thead>
+          <tr><th>Source</th><th>Query Filter</th><th>Example Result</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">MSFT_MCEFAIL</td>
+            <td class="mono">MCA_BANK = 'FP'</td>
+            <td><span class="tag tag-yes">298 rows</span></td>
+            <td style="color:var(--text2)">Clean scalar bank names — reliable matching</td>
+          </tr>
+          <tr>
+            <td class="mono">LEVEL3DEBUG_LOGFILES</td>
+            <td class="mono">MCA_BANK LIKE '%FP%'</td>
+            <td><span class="tag tag-accent">varies</span></td>
+            <td>Banks stored as JSON arrays; ACF rows use <code>ACF_FAIL_CORE_IDS</code> instead</td>
+          </tr>
+          <tr>
+            <td class="mono">AURA_PMDATA</td>
+            <td class="mono">DEFECT_TYPE = 'FP'</td>
+            <td><span class="tag tag-accent">varies</span></td>
+            <td>Lab data; some rows have NULL <code>FAILING_COMMAND</code></td>
+          </tr>
+          <tr>
+            <td class="mono">PRISM_PMDATA</td>
+            <td class="mono">DEFECT_TYPE = 'FP'</td>
+            <td><span class="tag tag-accent">varies</span></td>
+            <td>Richest lab data — 128 columns including TTF, suite info</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bank distributions side by side -->
+  <div class="section">
+    <div class="section-title">Bank / Defect Type Distributions</div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="tab-msft">MSFT_MCEFAIL Banks</button>
+      <button class="tab-btn" data-tab="tab-l3debug">L3DEBUG Banks (failed)</button>
+      <button class="tab-btn" data-tab="tab-aura">AURA Defect Types</button>
+      <button class="tab-btn" data-tab="tab-prism">PRISM Defect Types</button>
+      <button class="tab-btn" data-tab="tab-l3acf">L3DEBUG ACF Failures</button>
+    </div>
+    <div class="tab-content active" id="tab-msft">
+      <div class="bar-chart" id="chart-msft"></div>
+    </div>
+    <div class="tab-content" id="tab-l3debug">
+      <div class="bar-chart" id="chart-l3debug"></div>
+    </div>
+    <div class="tab-content" id="tab-aura">
+      <div class="bar-chart" id="chart-aura"></div>
+    </div>
+    <div class="tab-content" id="tab-prism">
+      <div class="bar-chart" id="chart-prism"></div>
+    </div>
+    <div class="tab-content" id="tab-l3acf">
+      <div class="callout info" style="margin-bottom:16px">
+        <h4>30,249 ACF (Accuracy Check Failure) rows in LEVEL3DEBUG_LOGFILES</h4>
+        <p>ACF failures are miscompares detected by workload self-checking logic. These rows have <code>MCA_BANK = []</code> (empty) and are identified by non-empty <code>ACF_FAIL_CORE_IDS</code> arrays containing the failing logical core IDs.</p>
+      </div>
+      <div class="bar-chart" id="chart-l3acf"></div>
+    </div>
+  </div>
+
+  <!-- Sample Data -->
+  <div class="section">
+    <div class="section-title">Sample Data from Key Tables</div>
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="sample-msft">MSFT_MCEFAIL</button>
+      <button class="tab-btn" data-tab="sample-l3debug">L3DEBUG_LOGFILES</button>
+      <button class="tab-btn" data-tab="sample-l3acf">L3DEBUG ACF Rows</button>
+      <button class="tab-btn" data-tab="sample-aura-acf">AURA ACF</button>
+      <button class="tab-btn" data-tab="sample-prism-acf">PRISM ACF</button>
+    </div>
+    <div class="tab-content active" id="sample-msft">
+      <div class="sample-grid" id="samples-msft"></div>
+    </div>
+    <div class="tab-content" id="sample-l3debug">
+      <div class="sample-grid" id="samples-l3debug"></div>
+    </div>
+    <div class="tab-content" id="sample-l3acf">
+      <div class="sample-grid" id="samples-l3acf"></div>
+    </div>
+    <div class="tab-content" id="sample-aura-acf">
+      <div class="sample-grid" id="samples-aura-acf"></div>
+    </div>
+    <div class="tab-content" id="sample-prism-acf">
+      <div class="sample-grid" id="samples-prism-acf"></div>
+    </div>
+  </div>
+
+  <!-- Untapped data -->
+  <div class="section">
+    <div class="section-title">Untapped Tables — Potential Value</div>
+    <div class="summary-grid" id="untapped-cards"></div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+
+const TABLES = [
+  { name: "G_MCE_LOGS_V3",              rows: 697546938, used: false, cat: "MCE Logs",     desc: "Latest MCE hardware error telemetry (V3 format)" },
+  { name: "G_MCE_LOGS_GENOA",           rows: 528915303, used: false, cat: "MCE Logs",     desc: "Genoa-specific MCE event logs" },
+  { name: "MSFT_CPU_SN_PPIN",           rows: 451421709, used: false, cat: "MSFT",         desc: "CPU serial-to-PPIN mapping table" },
+  { name: "MSFT_CMD_RESULTS",           rows: 395844337, used: false, cat: "MSFT",         desc: "Full command execution results (pass + fail)" },
+  { name: "G_MCE_LOGS_V2",              rows: 130385767, used: false, cat: "MCE Logs",     desc: "MCE logs (V2 format)" },
+  { name: "G_PART_HISTORY",             rows: 77004467,  used: false, cat: "Google Fleet",  desc: "Part lifecycle history and prior failures" },
+  { name: "LEVEL3DEBUG_LOGFILES",       rows: 3796911,   used: true,  cat: "Level3 Debug",  desc: "AFHC/ANC command execution logs with ACF/MCE arrays" },
+  { name: "G_MCE_LOGS_MILAN",           rows: 2583834,   used: false, cat: "MCE Logs",     desc: "Milan-specific MCE event logs" },
+  { name: "LEVEL3DEBUG_TOPOLOGY",       rows: 1345292,   used: false, cat: "Level3 Debug",  desc: "CCD/core topology mapping per CPU" },
+  { name: "MSFT_SUMMARY_LOG",           rows: 1334221,   used: false, cat: "MSFT",         desc: "Summarized test run logs" },
+  { name: "MSFT_MCEFAIL",               rows: 1007619,   used: true,  cat: "MSFT",         desc: "MCE failure records with bank, command, error flags" },
+  { name: "PRISM_PMDATA",               rows: 98000,     used: true,  cat: "Lab (PRISM)",   desc: "Lab validation data — 128 columns, richest ACF data" },
+  { name: "LEVEL3DEBUG_MARGIN_DATA",    rows: 65516,     used: false, cat: "Level3 Debug", desc: "Voltage margin test results" },
+  { name: "AURA_PMDATA",                rows: 49400,     used: true,  cat: "Lab (AURA)",    desc: "Lab validation part management data — 63 columns" },
+  { name: "G_ACFS_LOG_SDCDETECTIONS",   rows: 25353,     used: false, cat: "Google Fleet",  desc: "Silent Data Corruption detection events" },
+  { name: "MSFT_TESTFAIL",              rows: 11799,     used: false, cat: "MSFT",         desc: "Test-level failure records" },
+  { name: "LEVEL3DEBUG_SYS_INFO",       rows: 5833,      used: false, cat: "Level3 Debug", desc: "System configuration per test run" },
+  { name: "G_ACFS_LOG_SDCVOLUMEANDDPPM",rows: 1108,      used: false, cat: "Google Fleet",  desc: "SDC volume and DPPM statistics" },
+];
+
+const MSFT_BANKS = [
+  { label: "UMC", count: 995079, color: "var(--accent)" },
+  { label: "PIE", count: 6306, color: "var(--teal)" },
+  { label: "LS", count: 3389, color: "var(--green)" },
+  { label: "PSP", count: 1540, color: "var(--purple)" },
+  { label: "L3", count: 670, color: "var(--orange)" },
+  { label: "FP", count: 298, color: "var(--red)" },
+  { label: "L2", count: 248, color: "var(--accent2)" },
+  { label: "DE", count: 212, color: "var(--pink)" },
+  { label: "PCS_GMI", count: 103, color: "var(--yellow)" },
+  { label: "CS", count: 67, color: "#8d6e63" },
+  { label: "IF", count: 2, color: "#78909c" },
+];
+
+const L3DEBUG_BANKS = [
+  { label: "['L3']", count: 4235, color: "var(--orange)" },
+  { label: "['LS']", count: 1321, color: "var(--green)" },
+  { label: "['30']", count: 576, color: "var(--teal)" },
+  { label: "['UMC']", count: 501, color: "var(--accent)" },
+  { label: "['22','22','22','22']", count: 384, color: "var(--purple)" },
+  { label: "['UMC' x6]", count: 254, color: "var(--accent2)" },
+  { label: "['LS','LS']", count: 211, color: "var(--pink)" },
+  { label: "['UMC' x7]", count: 130, color: "var(--yellow)" },
+  { label: "['0']", count: 112, color: "#8d6e63" },
+  { label: "['LS','LS','LS']", count: 94, color: "#78909c" },
+];
+
+const AURA_DEFECTS = [
+  { label: "GMI", count: 65, color: "var(--accent)" },
+  { label: "L3", count: 64, color: "var(--orange)" },
+  { label: "L2", count: 52, color: "var(--accent2)" },
+  { label: "ACF", count: 42, color: "var(--red)" },
+  { label: "Boot", count: 38, color: "var(--purple)" },
+  { label: "MCE", count: 31, color: "var(--teal)" },
+  { label: "LS", count: 18, color: "var(--green)" },
+  { label: "xGMI", count: 12, color: "var(--pink)" },
+  { label: "DE", count: 8, color: "var(--yellow)" },
+  { label: "UMC", count: 8, color: "#8d6e63" },
+  { label: "EX", count: 8, color: "#78909c" },
+  { label: "ACF Failure", count: 6, color: "var(--red)" },
+  { label: "Hardlock", count: 5, color: "#546e7a" },
+  { label: "IF", count: 5, color: "#7e57c2" },
+  { label: "FP", count: 4, color: "#ef5350" },
+];
+
+const PRISM_DEFECTS = [
+  { label: "ACF", count: 260, color: "var(--red)" },
+  { label: "PIE", count: 97, color: "var(--teal)" },
+  { label: "L3", count: 80, color: "var(--orange)" },
+  { label: "L2", count: 74, color: "var(--accent2)" },
+  { label: "EX", count: 39, color: "var(--accent)" },
+  { label: "DE", count: 38, color: "var(--pink)" },
+  { label: "LS", count: 36, color: "var(--green)" },
+  { label: "Boot", count: 36, color: "var(--purple)" },
+  { label: "PCS_GMI", count: 36, color: "var(--yellow)" },
+  { label: "MCE", count: 34, color: "#8d6e63" },
+  { label: "MCE Bank 17", count: 23, color: "#78909c" },
+  { label: "OSErrMsg", count: 19, color: "#546e7a" },
+  { label: "FP", count: 19, color: "#ef5350" },
+  { label: "UMC", count: 17, color: "#7e57c2" },
+  { label: "MCE Bank 18", count: 16, color: "#5c6bc0" },
+];
+
+const L3ACF_COMMANDS = [
+  { label: "MaxCoreStim (fail)", count: 26787, color: "var(--accent)" },
+  { label: "AMPTTK (fail 0 1)", count: 2055, color: "var(--green)" },
+  { label: "DIFECT (Missing)", count: 749, color: "var(--orange)" },
+  { label: "AMPTTK (fail 0 2)", count: 384, color: "var(--teal)" },
+  { label: "AMPTTK (fail)", count: 162, color: "var(--purple)" },
+  { label: "other (Missing)", count: 92, color: "var(--text2)" },
+  { label: "MaxCoreStim (pass)", count: 20, color: "var(--accent2)" },
+];
+
+const SAMPLES = {
+  msft: [
+    { CORE_NUMBER: "149", MCA_BANK: "LS", MCI_STATUS: "0xDC204000000C0135", UC: "0", PCC: "0", POISON: "0", COMMAND: "/opt/AMD/FHC/bin/Tools/AMPTTK_v30.1 -tox 5 -msr -wrkldSize tiny -sleepInterval 0.02 ..." },
+    { CORE_NUMBER: "149", MCA_BANK: "LS", MCI_STATUS: "0xDC204000000C0135", UC: "0", PCC: "0", POISON: "0", COMMAND: "/opt/AMD/FHC/bin/Tools/MaxCoreStim_v15.1 -interval 8us -intervalPerSync 125 ..." },
+  ],
+  l3debug: [
+    { CPU_SN: "9ALB646N50015", COMMAND_STATUS: "pass", MCA_BANK: "[]", AFHC_VERSION: "AMD Field Health Check 1.2.19", FULL_COMMAND: "Command: /opt/AMD/FHC/bin/Tools/AMPTTK_v31.4 -tox 30 -msr ..." , ACF_FAIL_CORE_IDS: "[]" },
+    { CPU_SN: "9MM8288O50065", COMMAND_STATUS: "pass", MCA_BANK: "[]", AFHC_VERSION: "AMD Field Health Check 1.2.16", FULL_COMMAND: "Command: MaxCoreStim_v17.3 -tox 15 -interval 100ms ..." , ACF_FAIL_CORE_IDS: "[]" },
+  ],
+  l3acf: [
+    { CPU_SN: "9MM4924N50057", COMMAND_STATUS: "fail", MCA_BANK: "[]", FULL_COMMAND: "MaxCoreStim_v17.6 -tox 15 -interval 2us ...", ACF_FAIL_CORE_IDS: '["101","229"]', ACF_FAIL_APERF_MHZ: '["4126","4126"]', MCE_FAIL_CORE_IDS: "[]" },
+    { CPU_SN: "9MM4924N50057", COMMAND_STATUS: "fail", MCA_BANK: "[]", FULL_COMMAND: "MaxCoreStim_v17.6 -tox 15 -interval 2us ...", ACF_FAIL_CORE_IDS: '["229"]', ACF_FAIL_APERF_MHZ: '["4116"]', MCE_FAIL_CORE_IDS: "[]" },
+    { CPU_SN: "9MM4924N50057", COMMAND_STATUS: "fail", MCA_BANK: "[]", FULL_COMMAND: "MaxCoreStim_v17.6 -tox 15 -interval 2us ...", ACF_FAIL_CORE_IDS: '["227","229","139"]', ACF_FAIL_APERF_MHZ: '["4110","4110","4148"]', MCE_FAIL_CORE_IDS: "[]" },
+  ],
+  auraAcf: [
+    { SERIAL: "9AFS843W40116", DEFECT_TYPE: "ACF Failure", FAILING_COMMAND: "MaxCoreStim_v17.3 -interval 10ms ...", WORKLOAD: "AFHC", BANK: "NULL", CORE: "NULL", FATAL: "True" },
+    { SERIAL: "9MN0990O50019", DEFECT_TYPE: "ACF", FAILING_COMMAND: "DIFECT_v3.3 -nGroup 22 ...", WORKLOAD: "FDST", BANK: "NULL", CORE: "177/433 (p1: 10  core 1 t0/t1)", FATAL: "True" },
+    { SERIAL: "9MM8127O50022", DEFECT_TYPE: "ACF", FAILING_COMMAND: "hdrt-ac-zen4-debug-2 --dont-use-dev-mem --cpu all ...", WORKLOAD: "AFHC", BANK: "NULL", CORE: "055", FATAL: "True" },
+  ],
+  prismAcf: [
+    { SERIAL: "9MP0153S50030", DEFECT_TYPE: "ACF", FAILING_COMMAND: "FP_Deluge -t 30s --cpu all --mce l ...", WORKLOAD: "FP_Deluge", BANK: "NA", LOGICAL_CORE: "356", VERDICT: "Pending fhc_mm", SUITE: "AFHC", FATAL: "True" },
+    { SERIAL: "9MM5461N50052", DEFECT_TYPE: "ACF", FAILING_COMMAND: "CCX_Mem_Test -t 30s --cpu all ...", WORKLOAD: "CCX_Mem_Test", BANK: "NA", LOGICAL_CORE: "180", VERDICT: "Pending fhc_mm_pre_aging", SUITE: "AFHC", FATAL: "True" },
+    { SERIAL: "9ALM021O50012", DEFECT_TYPE: "ACF", FAILING_COMMAND: "hdrt_cdl --hdrt-bin bins/hdrt-ma-zen4-debug-9.bin ...", WORKLOAD: "src/hdrt_cdl", BANK: "NA", LOGICAL_CORE: "487", SUITE: "AFHC", FATAL: "True" },
+    { SERIAL: "9ALR764P50078", DEFECT_TYPE: "ACF", FAILING_COMMAND: "FP_Deluge -t 30s --cpu all --mce l ...", WORKLOAD: "FP_Deluge", BANK: "NA", LOGICAL_CORE: "254", VERDICT: "Pending shaker_1", SUITE: "AFHC", FATAL: "True" },
+  ],
+};
+
+const UNTAPPED = [
+  { name: "G_MCE_LOGS (V2/V3/Genoa/Milan)", rows: "1.36B", desc: "Per-core MCE events from production fleet at massive scale. Banks, MCI_STATUS, error codes.", potential: "Cross-reference profiler predictions with real fleet error rates" },
+  { name: "MSFT_CMD_RESULTS", rows: "395M", desc: "Full command pass/fail results. Much richer than MSFT_MCEFAIL which only has failures.", potential: "Calculate true fail RATES (fails/total_runs) instead of just fail counts" },
+  { name: "MSFT_CPU_SN_PPIN", rows: "451M", desc: "CPU serial-to-PPIN mapping for cross-referencing parts across sources.", potential: "Link the same CPU across MSFT, L3DEBUG, AURA, and PRISM data" },
+  { name: "G_PART_HISTORY", rows: "77M", desc: "Part lifecycle — prior failures, RMA history, stepping info.", potential: "Flag recidivist parts, identify stepping-specific failure patterns" },
+  { name: "G_ACFS_LOG_SDCDETECTIONS", rows: "25K", desc: "Silent Data Corruption detection events from production.", potential: "Directly relevant to SDC profiling — the tool's namesake" },
+  { name: "LEVEL3DEBUG_TOPOLOGY", rows: "1.3M", desc: "CCD/core topology mapping per CPU.", potential: "Map logical core IDs to physical CCD/core for spatial failure analysis" },
+  { name: "LEVEL3DEBUG_MARGIN_DATA", rows: "65K", desc: "Voltage margin test results per part.", potential: "Correlate voltage margins with failure likelihood" },
+];
+
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
+
+function fmt(n) {
+  if (typeof n === "string") return n;
+  if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+  if (n >= 1e3) return n.toLocaleString();
+  return String(n);
+}
+
+function renderCoverageTable() {
+  const tbody = document.querySelector("#coverage-table tbody");
+  const sorted = [...TABLES].sort((a, b) => b.rows - a.rows);
+  sorted.forEach(t => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="mono" style="font-weight:${t.used ? 600 : 400}">${t.name}</td>
+      <td style="text-align:right">${fmt(t.rows)}</td>
+      <td>${t.used ? '<span class="tag tag-yes">Queried</span>' : '<span class="tag tag-no">Unused</span>'}</td>
+      <td><span class="tag tag-accent">${t.cat}</span></td>
+      <td style="color:var(--text2);font-size:12px">${t.desc}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderBarChart(containerId, data, opts = {}) {
+  const container = document.getElementById(containerId);
+  const max = Math.max(...data.map(d => d.count));
+  const total = data.reduce((s, d) => s + d.count, 0);
+  data.forEach(d => {
+    const pct = (d.count / max) * 100;
+    const ratePct = ((d.count / total) * 100).toFixed(1);
+    const row = document.createElement("div");
+    row.className = "bar-row";
+    row.innerHTML = `
+      <div class="bar-label">${d.label}</div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${d.color};opacity:0.85"></div>
+      </div>
+      <div class="bar-value">${fmt(d.count)} <span style="color:var(--text2);font-size:10px">(${ratePct}%)</span></div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderSampleCards(containerId, rows) {
+  const container = document.getElementById(containerId);
+  rows.forEach((row, i) => {
+    const card = document.createElement("div");
+    card.className = "sample-card";
+    let kvHtml = '<div class="kv">';
+    Object.entries(row).forEach(([k, v]) => {
+      const cls = (!v || v === "NULL" || v === "[]") ? "v null" : "v";
+      const display = (!v || v === "NULL") ? "NULL" : v;
+      kvHtml += `<div class="k">${k}</div><div class="${cls} mono">${display}</div>`;
+    });
+    kvHtml += "</div>";
+    card.innerHTML = `<div class="row-label">Row ${i + 1}</div>${kvHtml}`;
+    container.appendChild(card);
+  });
+}
+
+function renderUntappedCards() {
+  const container = document.getElementById("untapped-cards");
+  UNTAPPED.forEach(t => {
+    const card = document.createElement("div");
+    card.className = "summary-card";
+    card.innerHTML = `
+      <h3>${t.name}</h3>
+      <div class="big-num" style="color:var(--accent)">${t.rows}</div>
+      <div class="desc">${t.desc}</div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;">
+        <span style="color:var(--green);font-weight:600">Potential:</span>
+        <span style="color:var(--text2)">${t.potential}</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Tabs
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const tabId = btn.dataset.tab;
+    const parent = btn.closest(".section");
+    parent.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    parent.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(tabId).classList.add("active");
+  });
+});
+
+// Init
+renderCoverageTable();
+renderBarChart("chart-msft", MSFT_BANKS);
+renderBarChart("chart-l3debug", L3DEBUG_BANKS);
+renderBarChart("chart-aura", AURA_DEFECTS);
+renderBarChart("chart-prism", PRISM_DEFECTS);
+renderBarChart("chart-l3acf", L3ACF_COMMANDS);
+renderSampleCards("samples-msft", SAMPLES.msft);
+renderSampleCards("samples-l3debug", SAMPLES.l3debug);
+renderSampleCards("samples-l3acf", SAMPLES.l3acf);
+renderSampleCards("samples-aura-acf", SAMPLES.auraAcf);
+renderSampleCards("samples-prism-acf", SAMPLES.prismAcf);
+renderUntappedCards();
+</script>
+
+</body>
+</html>
